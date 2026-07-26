@@ -102,8 +102,8 @@ These are deliberately deferred because they add integration weight before the c
 
 - Auth.js / NextAuth
 - Prisma adapter
-- GitHub OAuth
 - Google OAuth
+- GitHub OAuth can be added later if a second provider becomes useful.
 
 Email/password is intentionally excluded from the MVP. OAuth avoids password storage complexity while still demonstrating protected user data, session-aware server code, and real production authentication flows.
 
@@ -373,7 +373,7 @@ Auth.js adapter models will also be included in the final Prisma schema: `Accoun
 
 ### Authentication Flow
 
-1. User signs in with GitHub or Google OAuth.
+1. User signs in with Google OAuth.
 2. Auth.js creates or retrieves the `User`.
 3. Session is available to Server Components, Server Actions, and Route Handlers.
 4. Protected routes redirect unauthenticated users to sign-in.
@@ -643,8 +643,6 @@ Use Vitest for unit tests. Add React Testing Library once component interaction 
 ```text
 DATABASE_URL=
 AUTH_SECRET=
-AUTH_GITHUB_ID=
-AUTH_GITHUB_SECRET=
 AUTH_GOOGLE_ID=
 AUTH_GOOGLE_SECRET=
 OPENAI_API_KEY=
@@ -678,7 +676,7 @@ Deliverable: Clean app shell with linting and formatting.
 - Define initial schema with Auth.js adapter models and trip entities.
 - Create Neon PostgreSQL database.
 - Run first migration.
-- Configure Auth.js with GitHub and Google OAuth.
+- Configure Auth.js with Google OAuth.
 - Add protected route helper.
 
 Deliverable: Users can sign in and access protected dashboard.
@@ -737,11 +735,11 @@ Deliverable: Stronger interview discussion around personalization and iterative 
 
 ## 19. Recommended First Implementation Decision
 
-Start with GitHub and Google OAuth, Neon PostgreSQL, Prisma, and a normalized itinerary schema from day one. Avoid building a temporary local-storage version because it creates throwaway work and weakens the portfolio signal. The project should immediately demonstrate authenticated, persisted, server-side full-stack behavior while still allowing generated itineraries to be previewed before saving.
+Start with Google OAuth, Neon PostgreSQL, Prisma, and a normalized itinerary schema from day one. Avoid building a temporary local-storage version because it creates throwaway work and weakens the portfolio signal. The project should immediately demonstrate authenticated, persisted, server-side full-stack behavior while still allowing generated itineraries to be previewed before saving.
 
 ## 20. Reviewed Decisions
 
-- OAuth providers: GitHub and Google.
+- OAuth provider: Google for MVP. GitHub can be added later.
 - Database provider: Neon PostgreSQL with Prisma.
 - Generation flow: preview before saving.
 - MVP trip length limit: 14 days.

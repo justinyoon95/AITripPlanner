@@ -7,10 +7,19 @@ This is an AI-powered Trip Planner designed to generate Travel plans according t
 
 ```bash
 npm install
+cp .env.example .env
 npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+Before authentication and database-backed features work locally, fill in `.env`
+with:
+
+- `DATABASE_URL` from Neon PostgreSQL
+- `AUTH_SECRET`
+- Google OAuth credentials
+- `OPENAI_API_KEY` for itinerary generation later
 
 ## Useful Commands
 
@@ -19,4 +28,17 @@ npm run lint
 npm run typecheck
 npm run test
 npm run build
+npm run db:generate
+npm run db:migrate
+npm run db:studio
 ```
+
+## Current Milestone
+
+The project now has the database and authentication foundation:
+
+- Prisma schema for Auth.js users, accounts, sessions, trips, itineraries, days,
+  activities, and preferences
+- Auth.js configured with Google OAuth
+- Protected dashboard and trip creation routes
+- Server-side `requireUser()` helper for authenticated data access
