@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 
 import { createTripAction } from "@/lib/actions/trip-actions";
+import type { TripInput } from "@/lib/validation/trip-input";
 import {
   travelStyles,
   parseTripFormInput,
@@ -24,7 +25,19 @@ const defaultValues: TripFormInput = {
   travelStyle: "RELAXED",
 };
 
-export function TripForm() {
+type TripFormProps = {
+  defaultValues?: TripFormInput;
+  submitLabel?: string;
+  pendingLabel?: string;
+  onSubmitTrip?: (input: TripInput) => Promise<{ error?: string } | void>;
+};
+
+export function TripForm({
+  defaultValues: initialValues = defaultValues,
+  submitLabel = "Save trip",
+  pendingLabel = "Saving",
+  onSubmitTrip = createTripAction,
+}: TripFormProps) {
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string>();
   const {
@@ -33,7 +46,7 @@ export function TripForm() {
     formState: { errors },
   } = useForm<TripFormInput>({
     resolver: zodResolver(tripFormSchema),
-    defaultValues,
+    defaultValues: initialValues,
   });
 
   function onSubmit(values: TripFormInput) {
@@ -49,7 +62,7 @@ export function TripForm() {
         return;
       }
 
-      const result = await createTripAction(parsed);
+      const result = await onSubmitTrip(parsed);
 
       if (result?.error) {
         setServerError(result.error);
@@ -159,7 +172,7 @@ export function TripForm() {
 
       <Button type="submit" size="lg" disabled={isPending}>
         {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-        Save trip
+        {isPending ? pendingLabel : submitLabel}
       </Button>
     </form>
   );

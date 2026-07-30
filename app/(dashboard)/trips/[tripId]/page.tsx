@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, CircleDollarSign } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleDollarSign, Pencil } from "lucide-react";
 import Link from "next/link";
 
 import { UserMenu } from "@/components/auth/user-menu";
@@ -110,7 +110,14 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
         </div>
       </section>
 
-      <div className="mt-auto flex justify-end border-t pt-6">
+      <div className="mt-auto flex justify-end gap-3 border-t pt-6">
+        <Link
+          href={`/trips/${trip.id}/edit`}
+          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium transition-colors hover:bg-muted"
+        >
+          <Pencil className="size-4" aria-hidden="true" />
+          Edit
+        </Link>
         <DeleteTripButton tripId={trip.id} />
       </div>
     </main>

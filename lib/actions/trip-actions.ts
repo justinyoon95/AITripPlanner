@@ -6,7 +6,11 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/require-user";
 import { saveItineraryVersionForUser } from "@/lib/services/itinerary-service";
-import { createTripForUser, deleteTripForUser } from "@/lib/services/trip-service";
+import {
+  createTripForUser,
+  deleteTripForUser,
+  updateTripForUser,
+} from "@/lib/services/trip-service";
 import { tripInputSchema, type TripInput } from "@/lib/validation/trip-input";
 import {
   generatedItinerarySchema,
@@ -41,6 +45,26 @@ export async function deleteTripAction(tripId: string) {
   await deleteTripForUser(user.id, tripId);
   revalidatePath("/dashboard");
   redirect("/dashboard");
+}
+
+export async function updateTripAction(
+  tripId: string,
+  input: TripInput,
+): Promise<CreateTripActionState> {
+  const user = await requireUser();
+  const result = tripInputSchema.safeParse(input);
+
+  if (!result.success) {
+    return {
+      error: z.prettifyError(result.error),
+    };
+  }
+
+  await updateTripForUser(user.id, tripId, result.data);
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/trips/${tripId}`);
+  redirect(`/trips/${tripId}`);
 }
 
 export async function saveItineraryAction(

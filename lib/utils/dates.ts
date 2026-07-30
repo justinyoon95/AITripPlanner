@@ -36,3 +36,7 @@ export function formatDateRange(startDate: Date, endDate: Date) {
 
   return `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
 }
+
+export function formatDateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
