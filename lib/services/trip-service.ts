@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/db/prisma";
-import { normalizedTripInputSchema, type TripInput } from "@/lib/validation/trip-input";
+import {
+  normalizedTripInputSchema,
+  type TripInput,
+} from "@/lib/validation/trip-input";
 
 export async function createTripForUser(userId: string, input: TripInput) {
   const trip = normalizedTripInputSchema.parse(input);
@@ -51,7 +54,6 @@ export async function getTripForUser(userId: string, tripId: string) {
         orderBy: {
           version: "desc",
         },
-        take: 1,
         include: {
           days: {
             orderBy: {

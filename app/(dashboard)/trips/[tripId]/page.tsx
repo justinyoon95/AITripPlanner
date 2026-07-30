@@ -2,8 +2,10 @@ import { ArrowLeft, CalendarDays, CircleDollarSign } from "lucide-react";
 import Link from "next/link";
 
 import { UserMenu } from "@/components/auth/user-menu";
+import { CostSummary } from "@/components/trips/cost-summary";
 import { DeleteTripButton } from "@/components/trips/delete-trip-button";
 import { ItineraryGeneratorPanel } from "@/components/trips/itinerary-generator-panel";
+import { ItineraryVersionHistory } from "@/components/trips/itinerary-version-history";
 import { ItineraryView } from "@/components/trips/itinerary-view";
 import { requireUser } from "@/lib/auth/require-user";
 import { mapSavedItineraryToGeneratedItinerary } from "@/lib/services/itinerary-mapper";
@@ -85,11 +87,19 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
       <section className="py-8">
         <div className="grid gap-8">
           {savedItinerary && latestItinerary ? (
-            <ItineraryView
-              itinerary={savedItinerary}
-              currency={trip.currency}
-              heading={`Saved itinerary version ${latestItinerary.version}`}
-            />
+            <>
+              <CostSummary
+                itinerary={savedItinerary}
+                budgetCents={trip.budgetCents}
+                currency={trip.currency}
+              />
+              <ItineraryView
+                itinerary={savedItinerary}
+                currency={trip.currency}
+                heading={`Saved itinerary version ${latestItinerary.version}`}
+              />
+              <ItineraryVersionHistory versions={trip.itineraries} />
+            </>
           ) : null}
 
           <ItineraryGeneratorPanel
