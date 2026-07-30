@@ -26,3 +26,13 @@ export function isWithinTripLengthLimit(
 
   return dayCount >= 1 && dayCount <= maxDays;
 }
+
+export function formatDateRange(startDate: Date, endDate: Date) {
+  const formatter = new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
+}

@@ -49,6 +49,30 @@ export const normalizedTripInputSchema = tripInputSchema.transform((input) => ({
   budgetCents: dollarsToCents(input.budget),
 }));
 
+export const tripFormSchema = z.object({
+  destination: z.string().trim().min(2).max(100),
+  startDate: z.string().min(1, "Start date is required."),
+  endDate: z.string().min(1, "End date is required."),
+  budget: z.number().positive().max(100_000),
+  interestsText: z.string().trim().min(1, "Add at least one interest."),
+  travelStyle: z.enum(travelStyles),
+});
+
+export function parseTripFormInput(input: TripFormInput) {
+  return tripInputSchema.parse({
+    destination: input.destination,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    budget: input.budget,
+    interests: input.interestsText
+      .split(",")
+      .map((interest) => interest.trim())
+      .filter(Boolean),
+    travelStyle: input.travelStyle,
+  });
+}
+
 export type TripInput = z.input<typeof tripInputSchema>;
 export type ValidatedTripInput = z.output<typeof tripInputSchema>;
 export type NormalizedTripInput = z.output<typeof normalizedTripInputSchema>;
+export type TripFormInput = z.infer<typeof tripFormSchema>;

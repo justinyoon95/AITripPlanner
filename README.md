@@ -35,10 +35,14 @@ npm run db:studio
 
 ## Current Milestone
 
-The project now has the database and authentication foundation:
+The project now has the database, authentication, and saved-trip foundation:
 
 - Prisma schema for Auth.js users, accounts, sessions, trips, itineraries, days,
   activities, and preferences
 - Auth.js configured with Google OAuth
 - Protected dashboard and trip creation routes
 - Server-side `requireUser()` helper for authenticated data access
+- React Hook Form and Zod trip creation flow
+- Saved trips dashboard
+- Trip detail page
+- Trip deletion flow

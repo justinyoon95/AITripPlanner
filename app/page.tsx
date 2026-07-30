@@ -1,4 +1,5 @@
 import { ArrowRight, MapPinned } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -17,19 +18,19 @@ export default function Home() {
             only the trips worth keeping.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a
+            <Link
               href="/trips/new"
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Plan a trip
               <ArrowRight className="size-4" aria-hidden="true" />
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard"
               className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-medium transition-colors hover:bg-muted"
             >
               View dashboard
-            </a>
+            </Link>
           </div>
         </div>
       </section>

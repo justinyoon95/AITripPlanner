@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { centsToDollars, dollarsToCents } from "@/lib/utils/money";
+import { centsToDollars, dollarsToCents, formatCents } from "@/lib/utils/money";
 
 describe("money utilities", () => {
   it("converts dollars to integer cents", () => {
@@ -13,5 +13,9 @@ describe("money utilities", () => {
 
   it("converts cents back to dollars", () => {
     expect(centsToDollars(2500)).toBe(25);
+  });
+
+  it("formats cents as currency", () => {
+    expect(formatCents(250000, "USD")).toBe("$2,500");
   });
 });

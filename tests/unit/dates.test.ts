@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatDateRange,
   getInclusiveTripDayCount,
   isWithinTripLengthLimit,
 } from "@/lib/utils/dates";
@@ -31,5 +32,11 @@ describe("trip date utilities", () => {
         new Date("2026-06-15"),
       ),
     ).toBe(false);
+  });
+
+  it("formats date ranges for trip summaries", () => {
+    expect(
+      formatDateRange(new Date("2026-06-01"), new Date("2026-06-03")),
+    ).toBe("Jun 1, 2026 - Jun 3, 2026");
   });
 });

@@ -1,4 +1,5 @@
 import { UserMenu } from "@/components/auth/user-menu";
+import { TripForm } from "@/components/trips/trip-form";
 import { requireUser } from "@/lib/auth/require-user";
 
 export default async function NewTripPage() {
@@ -15,9 +16,8 @@ export default async function NewTripPage() {
         </div>
         <UserMenu user={user} />
       </div>
-      <section className="py-16 text-muted-foreground">
-        The React Hook Form and Zod-powered trip form will be built in the next
-        implementation phase.
+      <section className="py-10">
+        <TripForm />
       </section>
     </main>
   );

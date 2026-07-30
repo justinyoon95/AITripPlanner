@@ -13,3 +13,11 @@ export function centsToDollars(cents: number) {
 
   return cents / 100;
 }
+
+export function formatCents(cents: number, currency = "USD") {
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(centsToDollars(cents));
+}

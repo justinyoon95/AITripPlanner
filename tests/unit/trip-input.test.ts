@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  parseTripFormInput,
+  tripFormSchema,
   normalizedTripInputSchema,
   tripInputSchema,
 } from "@/lib/validation/trip-input";
@@ -50,5 +52,31 @@ describe("trip input validation", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("accepts valid browser form input", () => {
+    expect(
+      tripFormSchema.safeParse({
+        destination: "Seoul",
+        startDate: "2026-07-01",
+        endDate: "2026-07-05",
+        budget: 1800,
+        interestsText: "cafes, palaces, markets",
+        travelStyle: "CULTURE",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("parses comma-separated form interests into an interests array", () => {
+    const result = parseTripFormInput({
+      destination: "Seoul",
+      startDate: "2026-07-01",
+      endDate: "2026-07-05",
+      budget: 1800,
+      interestsText: "cafes, palaces, markets",
+      travelStyle: "CULTURE",
+    });
+
+    expect(result.interests).toEqual(["cafes", "palaces", "markets"]);
   });
 });
