@@ -3,7 +3,10 @@ import Link from "next/link";
 
 import { UserMenu } from "@/components/auth/user-menu";
 import { DeleteTripButton } from "@/components/trips/delete-trip-button";
+import { ItineraryGeneratorPanel } from "@/components/trips/itinerary-generator-panel";
+import { ItineraryView } from "@/components/trips/itinerary-view";
 import { requireUser } from "@/lib/auth/require-user";
+import { mapSavedItineraryToGeneratedItinerary } from "@/lib/services/itinerary-mapper";
 import { getTripForUser } from "@/lib/services/trip-service";
 import { formatDateRange } from "@/lib/utils/dates";
 import { formatCents } from "@/lib/utils/money";
@@ -19,6 +22,9 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
   const [{ tripId }, user] = await Promise.all([params, requireUser()]);
   const trip = await getTripForUser(user.id, tripId);
   const latestItinerary = trip.itineraries[0];
+  const savedItinerary = latestItinerary
+    ? mapSavedItineraryToGeneratedItinerary(latestItinerary)
+    : undefined;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 py-10">
@@ -77,26 +83,21 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
       </section>
 
       <section className="py-8">
-        {latestItinerary ? (
-          <div className="rounded-lg border p-6">
-            <h2 className="text-lg font-semibold tracking-normal">
-              Itinerary version {latestItinerary.version}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              AI itinerary rendering will be added in the next milestone.
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed p-6">
-            <h2 className="text-lg font-semibold tracking-normal">
-              No itinerary generated yet
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              This trip is saved. Next we will add the OpenAI preview flow that
-              generates a structured itinerary before saving version one.
-            </p>
-          </div>
-        )}
+        <div className="grid gap-8">
+          {savedItinerary && latestItinerary ? (
+            <ItineraryView
+              itinerary={savedItinerary}
+              currency={trip.currency}
+              heading={`Saved itinerary version ${latestItinerary.version}`}
+            />
+          ) : null}
+
+          <ItineraryGeneratorPanel
+            tripId={trip.id}
+            currency={trip.currency}
+            hasSavedItinerary={Boolean(savedItinerary)}
+          />
+        </div>
       </section>
 
       <div className="mt-auto flex justify-end border-t pt-6">

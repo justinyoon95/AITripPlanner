@@ -20,6 +20,7 @@ with:
 - `AUTH_SECRET`
 - Google OAuth credentials
 - `OPENAI_API_KEY` for itinerary generation later
+- Optional `OPENAI_MODEL` override for itinerary generation
 
 ## Useful Commands
 
@@ -46,3 +47,5 @@ The project now has the database, authentication, and saved-trip foundation:
 - Saved trips dashboard
 - Trip detail page
 - Trip deletion flow
+- OpenAI structured itinerary preview flow
+- Confirmed previews persist as versioned itinerary records

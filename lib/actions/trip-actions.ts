@@ -5,8 +5,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/require-user";
+import { saveItineraryVersionForUser } from "@/lib/services/itinerary-service";
 import { createTripForUser, deleteTripForUser } from "@/lib/services/trip-service";
 import { tripInputSchema, type TripInput } from "@/lib/validation/trip-input";
+import {
+  generatedItinerarySchema,
+  type GeneratedItinerary,
+} from "@/lib/ai/itinerary-schema";
 
 export type CreateTripActionState = {
   error?: string;
@@ -36,4 +41,18 @@ export async function deleteTripAction(tripId: string) {
   await deleteTripForUser(user.id, tripId);
   revalidatePath("/dashboard");
   redirect("/dashboard");
+}
+
+export async function saveItineraryAction(
+  tripId: string,
+  itinerary: GeneratedItinerary,
+  model: string,
+) {
+  const user = await requireUser();
+  const parsed = generatedItinerarySchema.parse(itinerary);
+
+  await saveItineraryVersionForUser(user.id, tripId, parsed, model);
+
+  revalidatePath(`/trips/${tripId}`);
+  redirect(`/trips/${tripId}`);
 }
