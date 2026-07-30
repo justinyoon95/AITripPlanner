@@ -22,6 +22,15 @@ with:
 - `OPENAI_API_KEY` for itinerary generation later
 - Optional `OPENAI_MODEL` override for itinerary generation
 
+To test itinerary generation without an OpenAI API key, set:
+
+```bash
+DEMO_MODE="true"
+```
+
+Demo mode returns deterministic sample itineraries that still use the same
+validation, preview, and save flow as real AI-generated itineraries.
+
 ## Useful Commands
 
 ```bash
@@ -49,3 +58,4 @@ The project now has the database, authentication, and saved-trip foundation:
 - Trip deletion flow
 - OpenAI structured itinerary preview flow
 - Confirmed previews persist as versioned itinerary records
+- Demo itinerary mode for local testing without OpenAI credits

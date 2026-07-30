@@ -1,5 +1,6 @@
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { generateDemoItineraryForTrip } from "@/lib/ai/demo-itinerary-generator";
 import { buildItineraryPrompt } from "@/lib/ai/itinerary-prompts";
 import {
   generatedItinerarySchema,
@@ -10,6 +11,10 @@ import { getItineraryModel, getOpenAIClient } from "@/lib/ai/openai-client";
 type TripForGeneration = Parameters<typeof buildItineraryPrompt>[0];
 
 export async function generateItineraryForTrip(trip: TripForGeneration) {
+  if (process.env.DEMO_MODE === "true") {
+    return generateDemoItineraryForTrip(trip);
+  }
+
   const client = getOpenAIClient();
   const model = getItineraryModel();
 
