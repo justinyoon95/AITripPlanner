@@ -16,6 +16,13 @@ export function getNextItineraryVersion(existingVersions: number[]) {
   return Math.max(...existingVersions) + 1;
 }
 
+export function isItineraryStaleForTrip(
+  tripUpdatedAt: Date,
+  itineraryCreatedAt: Date,
+) {
+  return tripUpdatedAt.getTime() > itineraryCreatedAt.getTime();
+}
+
 export async function saveItineraryVersionForUser(
   userId: string,
   tripId: string,

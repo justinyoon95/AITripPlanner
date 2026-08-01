@@ -9,6 +9,7 @@ import { ItineraryVersionHistory } from "@/components/trips/itinerary-version-hi
 import { ItineraryView } from "@/components/trips/itinerary-view";
 import { requireUser } from "@/lib/auth/require-user";
 import { mapSavedItineraryToGeneratedItinerary } from "@/lib/services/itinerary-mapper";
+import { isItineraryStaleForTrip } from "@/lib/services/itinerary-service";
 import { getTripForUser } from "@/lib/services/trip-service";
 import { formatDateRange } from "@/lib/utils/dates";
 import { formatCents } from "@/lib/utils/money";
@@ -27,6 +28,9 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
   const savedItinerary = latestItinerary
     ? mapSavedItineraryToGeneratedItinerary(latestItinerary)
     : undefined;
+  const isLatestItineraryStale = latestItinerary
+    ? isItineraryStaleForTrip(trip.updatedAt, latestItinerary.createdAt)
+    : false;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 py-10">
@@ -88,6 +92,12 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
         <div className="grid gap-8">
           {savedItinerary && latestItinerary ? (
             <>
+              {isLatestItineraryStale ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  Trip details changed after this itinerary was generated.
+                  Generate a new preview to create an updated version.
+                </div>
+              ) : null}
               <CostSummary
                 itinerary={savedItinerary}
                 budgetCents={trip.budgetCents}
