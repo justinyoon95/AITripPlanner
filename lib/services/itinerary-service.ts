@@ -23,6 +23,24 @@ export function isItineraryStaleForTrip(
   return tripUpdatedAt.getTime() > itineraryCreatedAt.getTime();
 }
 
+export function selectItineraryVersion<T extends { version: number }>(
+  itineraries: T[],
+  requestedVersion?: number,
+) {
+  if (itineraries.length === 0) {
+    return undefined;
+  }
+
+  if (!requestedVersion) {
+    return itineraries[0];
+  }
+
+  return (
+    itineraries.find((itinerary) => itinerary.version === requestedVersion) ??
+    itineraries[0]
+  );
+}
+
 export async function saveItineraryVersionForUser(
   userId: string,
   tripId: string,

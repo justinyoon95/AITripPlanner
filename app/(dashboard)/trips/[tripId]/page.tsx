@@ -9,7 +9,10 @@ import { ItineraryVersionHistory } from "@/components/trips/itinerary-version-hi
 import { ItineraryView } from "@/components/trips/itinerary-view";
 import { requireUser } from "@/lib/auth/require-user";
 import { mapSavedItineraryToGeneratedItinerary } from "@/lib/services/itinerary-mapper";
-import { isItineraryStaleForTrip } from "@/lib/services/itinerary-service";
+import {
+  isItineraryStaleForTrip,
+  selectItineraryVersion,
+} from "@/lib/services/itinerary-service";
 import { getTripForUser } from "@/lib/services/trip-service";
 import { formatDateRange } from "@/lib/utils/dates";
 import { formatCents } from "@/lib/utils/money";
@@ -19,17 +22,31 @@ type TripDetailPageProps = {
   params: Promise<{
     tripId: string;
   }>;
+  searchParams: Promise<{
+    version?: string;
+  }>;
 };
 
-export default async function TripDetailPage({ params }: TripDetailPageProps) {
-  const [{ tripId }, user] = await Promise.all([params, requireUser()]);
+export default async function TripDetailPage({
+  params,
+  searchParams,
+}: TripDetailPageProps) {
+  const [{ tripId }, query, user] = await Promise.all([
+    params,
+    searchParams,
+    requireUser(),
+  ]);
   const trip = await getTripForUser(user.id, tripId);
-  const latestItinerary = trip.itineraries[0];
-  const savedItinerary = latestItinerary
-    ? mapSavedItineraryToGeneratedItinerary(latestItinerary)
+  const requestedVersion = query.version ? Number(query.version) : undefined;
+  const selectedItinerary = selectItineraryVersion(
+    trip.itineraries,
+    requestedVersion,
+  );
+  const savedItinerary = selectedItinerary
+    ? mapSavedItineraryToGeneratedItinerary(selectedItinerary)
     : undefined;
-  const isLatestItineraryStale = latestItinerary
-    ? isItineraryStaleForTrip(trip.updatedAt, latestItinerary.createdAt)
+  const isSelectedItineraryStale = selectedItinerary
+    ? isItineraryStaleForTrip(trip.updatedAt, selectedItinerary.createdAt)
     : false;
 
   return (
@@ -90,9 +107,9 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
 
       <section className="py-8">
         <div className="grid gap-8">
-          {savedItinerary && latestItinerary ? (
+          {savedItinerary && selectedItinerary ? (
             <>
-              {isLatestItineraryStale ? (
+              {isSelectedItineraryStale ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                   Trip details changed after this itinerary was generated.
                   Generate a new preview to create an updated version.
@@ -106,9 +123,13 @@ export default async function TripDetailPage({ params }: TripDetailPageProps) {
               <ItineraryView
                 itinerary={savedItinerary}
                 currency={trip.currency}
-                heading={`Saved itinerary version ${latestItinerary.version}`}
+                heading={`Saved itinerary version ${selectedItinerary.version}`}
               />
-              <ItineraryVersionHistory versions={trip.itineraries} />
+              <ItineraryVersionHistory
+                tripId={trip.id}
+                selectedVersion={selectedItinerary.version}
+                versions={trip.itineraries}
+              />
             </>
           ) : null}
 

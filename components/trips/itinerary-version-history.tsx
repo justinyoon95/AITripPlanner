@@ -1,4 +1,10 @@
+import Link from "next/link";
+
+import { cn } from "@/lib/utils";
+
 type ItineraryVersionHistoryProps = {
+  tripId: string;
+  selectedVersion: number;
   versions: Array<{
     id: string;
     version: number;
@@ -15,6 +21,8 @@ const dateFormatter = new Intl.DateTimeFormat("en", {
 });
 
 export function ItineraryVersionHistory({
+  tripId,
+  selectedVersion,
   versions,
 }: ItineraryVersionHistoryProps) {
   if (versions.length === 0) {
@@ -26,9 +34,18 @@ export function ItineraryVersionHistory({
       <h2 className="text-lg font-semibold tracking-normal">Version history</h2>
       <div className="mt-4 grid gap-3">
         {versions.map((version, index) => (
-          <div
+          <Link
             key={version.id}
-            className="flex flex-col gap-1 rounded-lg bg-muted/40 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+            href={`/trips/${tripId}?version=${version.version}`}
+            className={cn(
+              "flex flex-col gap-1 rounded-lg border px-3 py-2 transition-colors sm:flex-row sm:items-center sm:justify-between",
+              version.version === selectedVersion
+                ? "border-primary bg-muted"
+                : "border-transparent bg-muted/40 hover:border-border hover:bg-muted",
+            )}
+            aria-current={
+              version.version === selectedVersion ? "page" : undefined
+            }
           >
             <div>
               <p className="text-sm font-medium">
@@ -44,7 +61,7 @@ export function ItineraryVersionHistory({
               </p>
             </div>
             <p className="text-xs text-muted-foreground">{version.model}</p>
-          </div>
+          </Link>
         ))}
       </div>
     </section>
