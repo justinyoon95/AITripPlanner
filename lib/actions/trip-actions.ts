@@ -75,8 +75,14 @@ export async function saveItineraryAction(
   const user = await requireUser();
   const parsed = generatedItinerarySchema.parse(itinerary);
 
-  await saveItineraryVersionForUser(user.id, tripId, parsed, model);
+  const savedItinerary = await saveItineraryVersionForUser(
+    user.id,
+    tripId,
+    parsed,
+    model,
+  );
 
   revalidatePath(`/trips/${tripId}`);
-  redirect(`/trips/${tripId}`);
+
+  return savedItinerary;
 }

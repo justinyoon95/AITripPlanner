@@ -10,6 +10,7 @@ import { ItineraryView } from "@/components/trips/itinerary-view";
 import { requireUser } from "@/lib/auth/require-user";
 import { mapSavedItineraryToGeneratedItinerary } from "@/lib/services/itinerary-mapper";
 import {
+  getNextItineraryVersion,
   isItineraryStaleForTrip,
   selectItineraryVersion,
 } from "@/lib/services/itinerary-service";
@@ -37,6 +38,9 @@ export default async function TripDetailPage({
     requireUser(),
   ]);
   const trip = await getTripForUser(user.id, tripId);
+  const nextItineraryVersion = getNextItineraryVersion(
+    trip.itineraries.map((itinerary) => itinerary.version),
+  );
   const requestedVersion = query.version ? Number(query.version) : undefined;
   const selectedItinerary = selectItineraryVersion(
     trip.itineraries,
@@ -137,6 +141,7 @@ export default async function TripDetailPage({
             tripId={trip.id}
             currency={trip.currency}
             hasSavedItinerary={Boolean(savedItinerary)}
+            nextVersion={nextItineraryVersion}
           />
         </div>
       </section>
