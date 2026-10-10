@@ -31,6 +31,24 @@ export function readPreview(id: string): Itinerary | null {
   } catch {
     throw new Error("This preview is damaged. Please create a new trip.");
   }
+  // Phase 1 previews had no day IDs. Derive them once from the stored trip identity.
+  if (
+    data &&
+    typeof data === "object" &&
+    "source" in data &&
+    data.source === "mock" &&
+    "days" in data &&
+    Array.isArray(data.days)
+  ) {
+    data = {
+      ...data,
+      days: data.days.map((day: unknown) =>
+        day && typeof day === "object" && !("id" in day) && "date" in day
+          ? { ...day, id: `${id}-day-${String(day.date)}` }
+          : day,
+      ),
+    };
+  }
   const result = itinerarySchema.safeParse(data);
   if (!result.success || result.data.id !== id)
     throw new Error(

@@ -27,7 +27,13 @@ export default async function NewTripPage({
         <p>A few details now. A world of possibilities next.</p>
       </div>
       <div className="planner-grid">
-        <TripForm destination={destination} />
+        <TripForm
+          destination={destination}
+          mockMode={
+            process.env.TRIP_GENERATION_MODE === "mock" &&
+            process.env.NODE_ENV !== "production"
+          }
+        />
         <aside className="planner-aside">
           <div className="aside-photo">
             <Image

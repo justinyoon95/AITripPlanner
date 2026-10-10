@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Itinerary, Interest } from "@/features/trips/types";
-import { summarizeCosts } from "@/features/trips/mock-generator";
+import { summarizeCosts, summarizeDayCosts } from "@/features/trips/costs";
 import { formatDate, formatMoney } from "@/features/trips/format";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -55,17 +55,32 @@ export function ItineraryView({ itinerary }: { itinerary: Itinerary }) {
       </div>
       <div className="preview-notice">
         <span className="sample-dot" />
-        Sample itinerary{" "}
+        {itinerary.source === "ai"
+          ? "AI-generated itinerary"
+          : "Sample itinerary"}{" "}
         <span>
-          Illustrative activities and costs. Verify places, prices, and
+          Suggested activities and estimated costs. Verify places, prices, and
           availability before traveling.
         </span>
       </div>
+      {itinerary.overview && (
+        <p className="trip-overview">{itinerary.overview}</p>
+      )}
+      {itinerary.warnings.length > 0 && (
+        <div className="error-box" aria-label="Travel considerations">
+          <h2>Before you go</h2>
+          <ul>
+            {itinerary.warnings.map((warning, index) => (
+              <li key={index}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="itinerary-grid">
         <div className="day-list">
           {days.map((day) => (
             <section
-              key={day.number}
+              key={day.id}
               id={`day-${day.number}`}
               className="day-section"
             >
@@ -121,16 +136,42 @@ export function ItineraryView({ itinerary }: { itinerary: Itinerary }) {
                   );
                 })}
               </div>
+              {day.additionalCosts && (
+                <dl className="day-extras">
+                  <div>
+                    <dt>Accommodation</dt>
+                    <dd>
+                      {formatMoney(
+                        day.additionalCosts.accommodation,
+                        input.currency,
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Local transport</dt>
+                    <dd>
+                      {formatMoney(
+                        day.additionalCosts.localTransport,
+                        input.currency,
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Additional meals</dt>
+                    <dd>
+                      {formatMoney(
+                        day.additionalCosts.additionalMeals,
+                        input.currency,
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              )}
               <div className="day-cost">
-                Day {day.number} activity estimate{" "}
+                Day {day.number}{" "}
+                {itinerary.source === "ai" ? "total" : "activity"} estimate{" "}
                 <strong>
-                  {formatMoney(
-                    day.activities.reduce(
-                      (sum, activity) => sum + activity.estimatedCost,
-                      0,
-                    ),
-                    input.currency,
-                  )}
+                  {formatMoney(summarizeDayCosts(day).total, input.currency)}
                 </strong>
               </div>
             </section>
@@ -143,7 +184,11 @@ export function ItineraryView({ itinerary }: { itinerary: Itinerary }) {
               <h2>Your budget at a glance</h2>
             </div>
             <div className="budget-total">
-              <span>Estimated activities</span>
+              <span>
+                {itinerary.source === "ai"
+                  ? "Estimated destination costs"
+                  : "Estimated activities"}
+              </span>
               <strong>{formatMoney(cost.total, input.currency)}</strong>
               <small>
                 of {formatMoney(input.budget, input.currency)} total budget
@@ -152,26 +197,36 @@ export function ItineraryView({ itinerary }: { itinerary: Itinerary }) {
             <div
               className="budget-track"
               role="progressbar"
-              aria-label="Budget used by sample activities"
-              aria-valuenow={Math.round(cost.percent)}
+              aria-label="Estimated budget utilization"
+              aria-valuenow={Math.min(100, Math.round(cost.percent))}
               aria-valuemin={0}
               aria-valuemax={100}
             >
               <span style={{ width: `${Math.min(cost.percent, 100)}%` }} />
             </div>
             <div className="remaining">
-              <span>Unallocated budget</span>
-              <strong>{formatMoney(cost.remaining, input.currency)}</strong>
+              <span>
+                {cost.remaining < 0 ? "Over budget" : "Unallocated budget"}
+              </span>
+              <strong>
+                {formatMoney(Math.abs(cost.remaining), input.currency)}
+              </strong>
             </div>
             <p className="budget-disclaimer">
-              Flights, accommodation, and transport are not included. These
-              sample costs are illustrative, not local price estimates.
+              {itinerary.source === "ai"
+                ? "Estimates for one traveler include activities, accommodation, local transport, and additional meals. Travel to and from the destination is excluded. These are not verified prices."
+                : "Flights, accommodation, and transport are not included. Sample costs are illustrative, not local price estimates."}
             </p>
+            {itinerary.budgetAssessment && (
+              <p className="budget-disclaimer">
+                {itinerary.budgetAssessment.explanation}
+              </p>
+            )}
           </div>
           <nav className="day-nav" aria-label="Itinerary days">
             <h2>Jump to a day</h2>
             {days.map((day) => (
-              <a href={`#day-${day.number}`} key={day.number}>
+              <a href={`#day-${day.number}`} key={day.id}>
                 <span>Day {day.number}</span>
                 <span>
                   {formatDate(day.date, { month: "short", day: "numeric" })}
@@ -194,6 +249,16 @@ export function ItineraryView({ itinerary }: { itinerary: Itinerary }) {
               <>
                 <h3>Your notes</h3>
                 <p>{input.preferences}</p>
+              </>
+            )}
+            {itinerary.assumptions.length > 0 && (
+              <>
+                <h3>Planning assumptions</h3>
+                <ul>
+                  {itinerary.assumptions.map((assumption, index) => (
+                    <li key={index}>{assumption}</li>
+                  ))}
+                </ul>
               </>
             )}
           </div>

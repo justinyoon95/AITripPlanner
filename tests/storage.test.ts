@@ -35,6 +35,19 @@ describe("browser preview persistence", () => {
   it("returns null when a preview is absent", () => {
     expect(readPreview(id)).toBeNull();
   });
+  it("loads older mock previews with deterministic day IDs", () => {
+    const oldPreview = {
+      ...trip,
+      days: trip.days.map((day) =>
+        Object.fromEntries(Object.entries(day).filter(([key]) => key !== "id")),
+      ),
+    };
+    values.set(`trip-planner:preview:v1:${id}`, JSON.stringify(oldPreview));
+    const first = readPreview(id)!;
+    expect(first.days[0].id).toBe(`${id}-day-${trip.days[0].date}`);
+    expect(readPreview(id)!.days[0].id).toBe(first.days[0].id);
+    expect(first.days[0].activities).toEqual(trip.days[0].activities);
+  });
   it("gives a useful error for corrupt JSON", () => {
     values.set(`trip-planner:preview:v1:${id}`, "{invalid");
     expect(() => readPreview(id)).toThrow("damaged");

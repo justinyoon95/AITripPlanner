@@ -34,7 +34,7 @@ export function tripDayCount(start: string, end: string) {
 }
 
 export const tripInputSchema = z
-  .object({
+  .strictObject({
     destination: z
       .string()
       .trim()
@@ -85,27 +85,42 @@ export const tripInputSchema = z
   });
 
 export const activitySchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  description: z.string().min(1),
+  id: z.string().min(1).max(200),
+  name: z.string().min(1).max(120),
+  description: z.string().min(1).max(400),
   category: z.enum(INTERESTS),
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  durationMinutes: z.number().int().positive(),
-  estimatedCost: z.number().finite().nonnegative(),
+  durationMinutes: z.number().int().positive().max(720),
+  estimatedCost: z.number().finite().nonnegative().max(1_000_000_000),
+});
+export const budgetAssessmentSchema = z.object({
+  status: z.enum(["reasonable", "tight", "unrealistic", "uncertain"]),
+  explanation: z.string().min(1).max(600),
+});
+export const additionalCostsSchema = z.object({
+  accommodation: z.number().finite().nonnegative().max(1_000_000_000),
+  localTransport: z.number().finite().nonnegative().max(1_000_000_000),
+  additionalMeals: z.number().finite().nonnegative().max(1_000_000_000),
 });
 export const itinerarySchema = z
   .object({
     id: z.uuid(),
-    source: z.literal("mock"),
+    source: z.enum(["mock", "ai"]),
     createdAt: z.iso.datetime(),
     input: tripInputSchema,
+    overview: z.string().min(1).max(800).optional(),
+    assumptions: z.array(z.string().min(1).max(300)).max(8).default([]),
+    warnings: z.array(z.string().min(1).max(400)).max(8).default([]),
+    budgetAssessment: budgetAssessmentSchema.optional(),
     days: z
       .array(
         z.object({
+          id: z.string().min(1).max(200),
           number: z.number().int().positive(),
           date: dateSchema,
-          title: z.string(),
+          title: z.string().min(1).max(120),
           activities: z.array(activitySchema).min(1).max(4),
+          additionalCosts: additionalCostsSchema.optional(),
         }),
       )
       .min(1)
@@ -121,8 +136,29 @@ export const itinerarySchema = z
         code: "custom",
         message: "Itinerary length does not match travel dates.",
       });
-    const ids = new Set<string>();
+    const ids = new Set<string>([itinerary.id]);
+    if (
+      itinerary.source === "ai" &&
+      (!itinerary.overview || !itinerary.budgetAssessment)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "AI itineraries must include an overview and budget assessment.",
+      });
+    }
     itinerary.days.forEach((day, index) => {
+      if (ids.has(day.id))
+        ctx.addIssue({
+          code: "custom",
+          message: "Day and activity IDs must be unique.",
+        });
+      ids.add(day.id);
+      if (itinerary.source === "ai" && !day.additionalCosts)
+        ctx.addIssue({
+          code: "custom",
+          message: "AI days must include cost estimates.",
+        });
       const expected = new Date(
         Date.parse(`${itinerary.input.startDate}T00:00:00Z`) + index * DAY_MS,
       )
@@ -133,7 +169,17 @@ export const itinerarySchema = z
           code: "custom",
           message: "Itinerary days must follow travel dates in order.",
         });
+      let previousEnd = 0;
       day.activities.forEach((activity) => {
+        const [hour, minute] = activity.time.split(":").map(Number);
+        const start = hour * 60 + minute;
+        if (start < previousEnd || start + activity.durationMinutes > 1440)
+          ctx.addIssue({
+            code: "custom",
+            message:
+              "Activities must be ordered, non-overlapping, and finish within the day.",
+          });
+        previousEnd = start + activity.durationMinutes;
         if (ids.has(activity.id))
           ctx.addIssue({
             code: "custom",

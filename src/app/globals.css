@@ -662,6 +662,26 @@ fieldset:last-child {
 .preview-notice > span:last-child {
   color: #796a5c;
 }
+.trip-overview {
+  max-width: 75ch;
+  margin: 24px 0;
+  line-height: 1.7;
+}
+.day-extras {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  margin: 20px 0;
+}
+.day-extras > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.day-extras dd {
+  margin: 0;
+  flex-shrink: 0;
+}
 .sample-dot {
   width: 6px;
   height: 6px;

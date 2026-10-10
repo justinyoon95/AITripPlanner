@@ -60,7 +60,7 @@ export default function HomePage() {
             Plan your trip <ArrowUpRight size={19} />
           </Link>
           <span className="hero-note">
-            Explore a sample itinerary. No sign-up needed.
+            Preview your itinerary. No sign-up needed.
           </span>
         </div>
         <div className="hero-location">
