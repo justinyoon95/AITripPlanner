@@ -10,12 +10,14 @@ import {
   ShoppingBag,
   Moon,
   Coffee,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import type { Itinerary, Interest } from "@/features/trips/types";
 import { summarizeCosts, summarizeDayCosts } from "@/features/trips/costs";
 import { formatDate, formatMoney } from "@/features/trips/format";
 import { buttonVariants } from "@/components/ui/button";
+import type { ReactNode } from "react";
 
 const categoryIcons = {
   Food: Utensils,
@@ -26,7 +28,17 @@ const categoryIcons = {
   Relaxation: Coffee,
 } satisfies Record<Interest, typeof Leaf>;
 
-export function ItineraryView({ itinerary }: { itinerary: Itinerary }) {
+export function ItineraryView({
+  itinerary,
+  editor,
+  onEditActivity,
+  editDisabled = false,
+}: {
+  itinerary: Itinerary;
+  editor?: ReactNode;
+  onEditActivity?: (dayId: string, activityId: string | null) => void;
+  editDisabled?: boolean;
+}) {
   const { input, days } = itinerary;
   const cost = summarizeCosts(itinerary);
   return (
@@ -99,6 +111,18 @@ export function ItineraryView({ itinerary }: { itinerary: Itinerary }) {
                   </span>
                   <h2>{day.title}</h2>
                 </div>
+                {onEditActivity && (
+                  <button
+                    type="button"
+                    className="icon-button day-edit"
+                    title={`Edit Day ${day.number}`}
+                    aria-label={`Edit Day ${day.number}`}
+                    disabled={editDisabled}
+                    onClick={() => onEditActivity(day.id, null)}
+                  >
+                    <MessageSquare size={17} />
+                  </button>
+                )}
               </header>
               <div className="activity-list">
                 {day.activities.map((activity) => {
@@ -114,7 +138,23 @@ export function ItineraryView({ itinerary }: { itinerary: Itinerary }) {
                           <Icon size={14} />
                           {activity.category}
                         </div>
-                        <h3>{activity.name}</h3>
+                        <div className="activity-title">
+                          <h3>{activity.name}</h3>
+                          {onEditActivity && (
+                            <button
+                              type="button"
+                              className="icon-button"
+                              title="Edit this activity"
+                              aria-label={`Edit ${activity.name} on Day ${day.number}`}
+                              disabled={editDisabled}
+                              onClick={() =>
+                                onEditActivity(day.id, activity.id)
+                              }
+                            >
+                              <MessageSquare size={15} />
+                            </button>
+                          )}
+                        </div>
                         <p>{activity.description}</p>
                         <div className="activity-details">
                           <span>
@@ -178,6 +218,7 @@ export function ItineraryView({ itinerary }: { itinerary: Itinerary }) {
           ))}
         </div>
         <aside className="trip-sidebar">
+          {editor}
           <div className="budget-panel">
             <div className="panel-heading">
               <Wallet size={19} />

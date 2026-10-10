@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { INTERESTS, MAX_TRIP_DAYS } from "@/features/trips/schema";
+import type { TripInput } from "@/features/trips/types";
+import { generationRequirements } from "./generation-requirements";
 
 // Use a JSON-schema-compatible wire contract; domain refinements run after parsing.
 const estimate = z.number().min(0).max(1_000_000_000);
@@ -40,3 +42,19 @@ export const aiOutputSchema = z.object({
     .min(1)
     .max(MAX_TRIP_DAYS),
 });
+
+export function aiOutputSchemaForTrip(input: TripInput) {
+  const required = generationRequirements(input);
+  const day = aiOutputSchema.shape.days.element;
+  return aiOutputSchema.extend({
+    days: z
+      .array(
+        day.extend({
+          number: z.number().int().min(1).max(required.dayCount),
+          date: z.enum(required.days.map((item) => item.date)),
+          activities: day.shape.activities.length(required.activitiesPerDay),
+        }),
+      )
+      .length(required.dayCount),
+  });
+}

@@ -17,8 +17,9 @@ import {
   outputTokenAllowance,
 } from "./config";
 import { GenerationError } from "./errors";
-import { aiOutputSchema } from "./output-schema";
+import { aiOutputSchema, aiOutputSchemaForTrip } from "./output-schema";
 import { itineraryInput, itineraryInstructions } from "./prompts";
+import { validateGeneratedSchedule } from "./generation-requirements";
 
 export function normalizeAIItinerary(
   raw: unknown,
@@ -30,6 +31,7 @@ export function normalizeAIItinerary(
       "INVALID_AI_RESPONSE",
       "The AI returned an incomplete or invalid itinerary. Please try again.",
     );
+  validateGeneratedSchedule(parsed.data, input);
   const result = itinerarySchema.safeParse({
     ...parsed.data,
     id: randomUUID(),
@@ -52,15 +54,10 @@ export function normalizeAIItinerary(
       })),
     })),
   });
-  const expectedActivities =
-    input.pace === "relaxed" ? 2 : input.pace === "moderate" ? 3 : 4;
-  if (
-    !result.success ||
-    result.data.days.some((day) => day.activities.length !== expectedActivities)
-  )
+  if (!result.success)
     throw new GenerationError(
       "INVALID_AI_RESPONSE",
-      "The AI returned a schedule that did not match your travel dates or pace. Please try again.",
+      "The AI returned an invalid itinerary. No itinerary was saved. Please try again.",
     );
   const itinerary = result.data;
   if (summarizeCosts(itinerary).remaining < 0) {
@@ -103,7 +100,9 @@ export async function generateItinerary(
         model: config.model,
         instructions: itineraryInstructions,
         input: itineraryInput(input),
-        text: { format: zodTextFormat(aiOutputSchema, "trip_itinerary") },
+        text: {
+          format: zodTextFormat(aiOutputSchemaForTrip(input), "trip_itinerary"),
+        },
         max_output_tokens: outputTokenAllowance(
           tripDayCount(input.startDate, input.endDate),
         ),
