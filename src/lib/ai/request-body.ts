@@ -2,7 +2,10 @@ import "server-only";
 import { GenerationError } from "./errors";
 
 export const MAX_REQUEST_BYTES = 32_768;
-export async function readGenerationBody(request: Request): Promise<unknown> {
+export async function readGenerationBody(
+  request: Request,
+  maxBytes = MAX_REQUEST_BYTES,
+): Promise<unknown> {
   if (
     request.headers.get("content-type")?.split(";")[0].trim() !==
     "application/json"
@@ -13,7 +16,7 @@ export async function readGenerationBody(request: Request): Promise<unknown> {
       415,
     );
   const declaredLength = request.headers.get("content-length");
-  if (declaredLength && Number(declaredLength) > MAX_REQUEST_BYTES)
+  if (declaredLength && Number(declaredLength) > maxBytes)
     throw new GenerationError(
       "REQUEST_TOO_LARGE",
       "Trip details are too large. Please shorten your preferences.",
@@ -44,7 +47,7 @@ export async function readGenerationBody(request: Request): Promise<unknown> {
         );
       if (done) break;
       size += value.byteLength;
-      if (size > MAX_REQUEST_BYTES)
+      if (size > maxBytes)
         throw new GenerationError(
           "REQUEST_TOO_LARGE",
           "Trip details are too large. Please shorten your preferences.",

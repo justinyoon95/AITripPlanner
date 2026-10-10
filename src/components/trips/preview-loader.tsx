@@ -3,37 +3,66 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, LoaderCircle, Compass } from "lucide-react";
-import { readPreview } from "@/features/trips/storage";
-import type { Itinerary } from "@/features/trips/types";
-import { ItineraryView } from "./itinerary-view";
+import {
+  readSession,
+  recoverSession,
+  updateStoredSession,
+} from "@/features/trips/session-storage";
+import { canonicalJSON } from "@/features/trips/fingerprint";
+import type { TripSession } from "@/features/trips/session-schema";
+import { TripWorkspace } from "./trip-workspace";
 import { buttonVariants } from "@/components/ui/button";
 
 type PreviewState =
   | { status: "loading" }
-  | { status: "ready"; itinerary: Itinerary }
+  | { status: "ready"; session: TripSession; warning?: string }
   | { status: "missing" }
   | { status: "error"; message: string };
-export function PreviewLoader({ id }: { id: string }) {
+export function PreviewLoader({
+  id,
+  mockMode = false,
+}: {
+  id: string;
+  mockMode?: boolean;
+}) {
   const [state, setState] = useState<PreviewState>({ status: "loading" });
   useEffect(() => {
     // Storage is browser-only; defer the read until the component has mounted.
-    const timer = window.setTimeout(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
       try {
-        const itinerary = readPreview(id);
-        setState(
-          itinerary ? { status: "ready", itinerary } : { status: "missing" },
-        );
+        const stored = readSession(id);
+        if (!stored) {
+          if (!cancelled) setState({ status: "missing" });
+          return;
+        }
+        const recovered = await recoverSession(stored);
+        let warning: string | undefined;
+        if (canonicalJSON(stored) !== canonicalJSON(recovered)) {
+          try {
+            await updateStoredSession(stored, () => recovered);
+          } catch {
+            warning =
+              "Your saved itinerary is available, but this browser could not save the recovered conversation. Enable site storage and reload before editing.";
+          }
+        }
+        if (!cancelled)
+          setState({ status: "ready", session: recovered, warning });
       } catch (error) {
-        setState({
-          status: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "This browser couldn't open the preview.",
-        });
+        if (!cancelled)
+          setState({
+            status: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "This browser couldn't open the preview.",
+          });
       }
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [id]);
   if (state.status === "loading")
     return (
@@ -67,7 +96,11 @@ export function PreviewLoader({ id }: { id: string }) {
         <ArrowLeft size={16} />
         Back to trip planner
       </Link>
-      <ItineraryView itinerary={state.itinerary} />
+      <TripWorkspace
+        initial={state.session}
+        mockMode={mockMode}
+        initialWarning={state.warning}
+      />
     </>
   );
 }

@@ -10,7 +10,13 @@ export default async function TripPage({
   if (!z.uuid().safeParse(tripId).success) notFound();
   return (
     <main id="main" className="shell itinerary-page">
-      <PreviewLoader id={tripId} />
+      <PreviewLoader
+        id={tripId}
+        mockMode={
+          process.env.TRIP_GENERATION_MODE === "mock" &&
+          process.env.NODE_ENV !== "production"
+        }
+      />
     </main>
   );
 }

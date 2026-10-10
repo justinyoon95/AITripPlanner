@@ -4,6 +4,7 @@
   --background: #fcfcfa;
   --foreground: #20352c;
   --primary: #285846;
+  --green: var(--primary);
   --muted: #69756e;
   --border: #dce3dc;
   --accent: #e5eee5;
@@ -1181,6 +1182,316 @@ fieldset:last-child {
   }
   .preview-notice {
     padding: 13px;
+  }
+}
+.workspace-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.workspace-toolbar small {
+  color: var(--muted);
+}
+.trip-editor {
+  min-width: 0;
+  scroll-margin-top: 24px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+}
+.editor-tabs {
+  display: flex;
+  gap: 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.editor-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.editor-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--green);
+  color: var(--green);
+}
+.editor-tabs span {
+  font-size: 12px;
+}
+.scope-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.scope-control select {
+  max-width: 65%;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: white;
+}
+.selected-activity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.icon-button {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  color: var(--green);
+}
+.icon-button:hover {
+  background: #eef6f0;
+}
+.icon-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.activity-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.activity-title h3 {
+  min-width: 0;
+}
+.day-edit {
+  margin-left: auto;
+}
+.chat-log {
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-bottom: 16px;
+}
+.chat-empty,
+.editor-disclaimer {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.chat-message {
+  font-size: 13px;
+  line-height: 1.65;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.chat-user {
+  background: #eef6f0;
+  padding: 12px;
+  border-radius: 4px;
+}
+.chat-message header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+.chat-message header span,
+.chat-message time {
+  color: var(--muted);
+  font-size: 10px;
+}
+.chat-message p {
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+.edit-loading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.editor-error {
+  border-left: 3px solid #b34343;
+  padding: 10px 12px;
+  background: #fff2f0;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.editor-error p {
+  margin: 0 0 8px;
+}
+.chat-compose label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.chat-compose textarea {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  font: inherit;
+  font-size: 13px;
+  background: white;
+}
+.chat-compose textarea:disabled {
+  background: #f3f5f3;
+}
+.chat-compose > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-block: 8px 12px;
+}
+.chat-compose small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.edit-preview {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 20px;
+  background: white;
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.edit-preview header h3,
+.version-history h3 {
+  font-size: 16px;
+  margin: 0;
+}
+.edit-preview header > span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.change-list {
+  max-height: 340px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.activity-change {
+  border-top: 1px solid var(--border);
+  padding-block: 12px;
+}
+.activity-change h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.change-before,
+.change-after {
+  padding-left: 10px;
+  border-left: 2px solid #d5d9d7;
+  margin-bottom: 12px;
+}
+.change-after {
+  border-color: var(--green);
+}
+.change-before > span,
+.change-after > span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.activity-change p {
+  margin: 5px 0;
+}
+.activity-change svg {
+  display: inline;
+  vertical-align: middle;
+}
+.activity-change small {
+  display: block;
+  font-size: 11px;
+}
+.proposal-cost {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.proposal-cost strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 15px;
+}
+.proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.trip-editor .button {
+  padding: 9px 12px;
+  font-size: 12px;
+  min-height: 36px;
+}
+.version-history ol {
+  list-style: none;
+  padding: 0;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.version-history li {
+  padding: 14px 0 14px 12px;
+  border-left: 2px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.version-history li[aria-current] {
+  border-left-color: var(--green);
+}
+.version-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.version-label span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--green);
+  font-size: 11px;
+}
+.version-history time {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.version-history p {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  .trip-editor {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -99,6 +99,18 @@ describe("OpenAI generation", () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(create).toHaveBeenCalledWith("test-key-not-real");
+    expect(JSON.parse(parse.mock.calls[0][0].input)).toMatchObject({
+      inclusiveDayCount: 3,
+      activitiesPerDay: 3,
+      requiredDays: [
+        { number: 1, date: "2026-12-01" },
+        { number: 2, date: "2026-12-02" },
+        { number: 3, date: "2026-12-03" },
+      ],
+    });
+    expect(
+      parse.mock.calls[0][0].text.format.schema.properties.days,
+    ).toMatchObject({ minItems: 3, maxItems: 3 });
   });
   it("scales token budgets with a hard cap", () => {
     expect(outputTokenAllowance(1)).toBe(1850);
