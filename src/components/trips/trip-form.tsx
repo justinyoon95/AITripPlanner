@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,9 +20,9 @@ import {
   MAX_TRIP_DAYS,
   tripInputSchema,
 } from "@/features/trips/schema";
-import { generateMockItinerary } from "@/features/trips/mock-generator";
+import { requestItinerary } from "@/features/trips/generate-client";
 import { storePreview } from "@/features/trips/storage";
-import type { TripInput } from "@/features/trips/types";
+import type { Itinerary, TripInput } from "@/features/trips/types";
 
 const paceOptions = [
   {
@@ -45,10 +45,23 @@ const paceOptions = [
   },
 ] as const;
 
-export function TripForm({ destination = "" }: { destination?: string }) {
+export function TripForm({
+  destination = "",
+  mockMode = false,
+}: {
+  destination?: string;
+  mockMode?: boolean;
+}) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isNavigating, startNavigation] = useTransition();
+  const inFlight = useRef(false);
+  const abort = useRef<AbortController | null>(null);
+  const pendingPreview = useRef<{ input: string; itinerary: Itinerary } | null>(
+    null,
+  );
+  useEffect(() => () => abort.current?.abort(), []);
   const {
     register,
     handleSubmit,
@@ -69,9 +82,18 @@ export function TripForm({ destination = "" }: { destination?: string }) {
   });
   const startDate = useWatch({ control, name: "startDate" });
   async function submit(values: TripInput) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setIsGenerating(true);
     setSubmitError(null);
     try {
-      const itinerary = generateMockItinerary(values, crypto.randomUUID());
+      const inputKey = JSON.stringify(values);
+      abort.current = new AbortController();
+      const itinerary =
+        pendingPreview.current?.input === inputKey
+          ? pendingPreview.current.itinerary
+          : await requestItinerary(values, abort.current.signal);
+      pendingPreview.current = { input: inputKey, itinerary };
       storePreview(itinerary);
       startNavigation(() => router.push(`/trips/${itinerary.id}`));
     } catch (error) {
@@ -80,6 +102,9 @@ export function TripForm({ destination = "" }: { destination?: string }) {
           ? error.message
           : "We couldn't create your preview. Please try again.",
       );
+    } finally {
+      inFlight.current = false;
+      setIsGenerating(false);
     }
   }
   const error = (name: keyof TripInput) =>
@@ -94,7 +119,14 @@ export function TripForm({ destination = "" }: { destination?: string }) {
   });
 
   return (
-    <form onSubmit={handleSubmit(submit)} noValidate className="trip-form">
+    <form
+      onSubmit={(event) => {
+        void handleSubmit(submit)(event);
+      }}
+      noValidate
+      className="trip-form"
+      aria-busy={isSubmitting || isGenerating || isNavigating}
+    >
       <div className="form-section">
         <div className="form-section-title">
           <span>01</span>
@@ -139,7 +171,9 @@ export function TripForm({ destination = "" }: { destination?: string }) {
           </div>
         </div>
         <p className="field-hint">
-          Up to {MAX_TRIP_DAYS} days, including your arrival and departure days.
+          Up to {MAX_TRIP_DAYS} days, including your arrival and departure days.{" "}
+          Budget estimates are for one traveler, excluding travel to and from
+          your destination.
         </p>
         <div className="budget-row">
           <div className="field">
@@ -233,8 +267,8 @@ export function TripForm({ destination = "" }: { destination?: string }) {
           />
           {error("preferences")}
           <p className="field-hint">
-            Your notes stay with the preview. Sample activities do not yet adapt
-            to free-text requests.
+            Include dietary needs, accessibility preferences, or must-see
+            places. Recommendations still need verification.
           </p>
         </div>
       </div>
@@ -243,17 +277,25 @@ export function TripForm({ destination = "" }: { destination?: string }) {
           {submitError}
         </p>
       )}
+      <p className="field-hint">
+        {mockMode
+          ? "Development preview: illustrative sample activities, not AI-generated recommendations."
+          : "Trip details are sent to OpenAI to generate your plan. Avoid entering sensitive personal information."}
+      </p>
       <div className="form-bottom">
         <p>
-          A sample plan to start exploring.
+          A personalized plan to start exploring.
           <br />
           <span>No bookings. No commitments.</span>
         </p>
-        <Button type="submit" disabled={isSubmitting || isNavigating}>
-          {isSubmitting || isNavigating ? (
+        <Button
+          type="submit"
+          disabled={isSubmitting || isGenerating || isNavigating}
+        >
+          {isSubmitting || isGenerating || isNavigating ? (
             <>
               <LoaderCircle size={18} className="spin" />
-              Creating preview...
+              Generating your itinerary...
             </>
           ) : (
             <>

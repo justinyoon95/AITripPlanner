@@ -5,10 +5,8 @@ import {
   dateSchema,
   tripDayCount,
 } from "../src/features/trips/schema";
-import {
-  generateMockItinerary,
-  summarizeCosts,
-} from "../src/features/trips/mock-generator";
+import { generateMockItinerary } from "../src/features/trips/mock-generator";
+import { summarizeCosts } from "../src/features/trips/costs";
 import type { TripInput } from "../src/features/trips/types";
 
 const input: TripInput = {

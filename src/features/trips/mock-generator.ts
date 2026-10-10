@@ -22,6 +22,7 @@ export function generateMockItinerary(
         : ["09:00", "12:00", "15:00", "19:00"];
   const activityBudget = (input.budget * 0.55) / (count * slots.length);
   const days = Array.from({ length: count }, (_, dayIndex) => ({
+    id: `${id}-day${dayIndex + 1}`,
     number: dayIndex + 1,
     date: new Date(
       Date.parse(`${input.startDate}T00:00:00Z`) + dayIndex * DAY_MS,
@@ -69,24 +70,4 @@ export function generateMockItinerary(
     input,
     days,
   });
-}
-
-export function summarizeCosts(itinerary: Itinerary) {
-  const total =
-    Math.round(
-      itinerary.days.reduce(
-        (sum, day) =>
-          sum +
-          day.activities.reduce(
-            (subtotal, activity) => subtotal + activity.estimatedCost,
-            0,
-          ),
-        0,
-      ) * 100,
-    ) / 100;
-  return {
-    total,
-    remaining: Math.round((itinerary.input.budget - total) * 100) / 100,
-    percent: (total / itinerary.input.budget) * 100,
-  };
 }

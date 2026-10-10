@@ -6,7 +6,7 @@ export function SiteFooter() {
         TripPlannerAI
       </Link>
       <span>A little planning. A lot of possibility.</span>
-      <span>Sample trip planner · No account needed</span>
+      <span>Personalized trip planner · No account needed</span>
     </footer>
   );
 }
