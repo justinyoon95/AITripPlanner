@@ -1,4 +1,18 @@
 import { z } from "zod";
+import {
+  dateSchema,
+  tripDayCount,
+  calendarDate,
+  timezoneSchema,
+} from "./calendar";
+import {
+  destinationSchema,
+  travelSchema,
+  seasonalSchema,
+  MAX_TRAVELERS,
+} from "./planning-schema";
+import { flightAtDestination, scheduleWithinWindow } from "./travel-planning";
+export { dateSchema, tripDayCount, DAY_MS } from "./calendar";
 
 export const MAX_TRIP_DAYS = 14;
 export const INTERESTS = [
@@ -11,28 +25,6 @@ export const INTERESTS = [
 ] as const;
 export const CURRENCIES = ["USD", "CAD", "EUR", "GBP", "JPY", "KRW"] as const;
 export const PACES = ["relaxed", "moderate", "packed"] as const;
-export const DAY_MS = 86_400_000;
-
-export const dateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date.")
-  .refine((value) => {
-    const parsed = new Date(`${value}T00:00:00.000Z`);
-    return (
-      Number.isFinite(parsed.getTime()) &&
-      parsed.toISOString().slice(0, 10) === value
-    );
-  }, "Choose a valid calendar date.");
-
-export function tripDayCount(start: string, end: string) {
-  return (
-    Math.round(
-      (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) /
-        DAY_MS,
-    ) + 1
-  );
-}
-
 export const tripInputSchema = z
   .strictObject({
     destination: z
@@ -62,6 +54,11 @@ export const tripInputSchema = z
       ),
     pace: z.enum(PACES),
     preferences: z.string().trim().max(1000, "Use 1,000 characters or fewer."),
+    resolvedDestination: destinationSchema.optional(),
+    timezone: timezoneSchema.optional(),
+    travelers: z.number().int().min(1).max(MAX_TRAVELERS).optional(),
+    seasonalPreference: seasonalSchema.optional(),
+    travel: travelSchema.optional(),
   })
   .superRefine((input, ctx) => {
     if (
@@ -82,7 +79,156 @@ export const tripInputSchema = z
         path: ["endDate"],
         message: `Choose a trip of ${MAX_TRIP_DAYS} days or fewer.`,
       });
+    const issue = (path: string[], message: string) =>
+      ctx.addIssue({ code: "custom", path, message });
+    for (const kind of ["arrival", "departure"] as const) {
+      const flight = input.travel?.[kind];
+      if (!flight) continue;
+      if (flight.time && (!flight.date || !flight.airportCode))
+        issue(
+          ["travel", kind, "time"],
+          "Provide the flight date and airport with its local time.",
+        );
+      if (
+        flight.date &&
+        !flight.time &&
+        flight.date !== (kind === "arrival" ? input.startDate : input.endDate)
+      )
+        issue(
+          ["travel", kind, "date"],
+          "Arrival/departure dates must match the trip boundary; provide a time and airport for timezone conversion.",
+        );
+      if (
+        flight.date &&
+        flight.time &&
+        flight.airport &&
+        input.resolvedDestination
+      ) {
+        try {
+          const local = flightAtDestination(input, kind)!;
+          if (
+            local.date !==
+            (kind === "arrival" ? input.startDate : input.endDate)
+          )
+            issue(
+              ["travel", kind, "date"],
+              `The ${kind} must match the ${kind === "arrival" ? "start" : "end"} date in the destination timezone.`,
+            );
+        } catch (error) {
+          issue(["travel", kind, "time"], (error as Error).message);
+        }
+      }
+    }
+    const arrival = input.travel?.arrival,
+      departure = input.travel?.departure;
+    if (
+      arrival?.date &&
+      arrival.time &&
+      arrival.airport &&
+      departure?.date &&
+      departure.time &&
+      departure.airport
+    ) {
+      try {
+        const a = flightAtDestination(input, "arrival"),
+          d = flightAtDestination(input, "departure");
+        if (a && d && `${a.date}T${a.time}` >= `${d.date}T${d.time}`)
+          issue(
+            ["travel", "departure", "time"],
+            "Departure must be after arrival.",
+          );
+        const ready = flightAtDestination(input, "arrival", 180),
+          leave = flightAtDestination(input, "departure", -180);
+        if (
+          ready &&
+          leave &&
+          `${ready.date}T${ready.time}` >= `${leave.date}T${leave.time}`
+        )
+          issue(
+            ["travel", "departure", "time"],
+            "Arrival and departure leave no room for the estimated airport/transfer buffers. Adjust the trip details.",
+          );
+      } catch {
+        /* Field-specific timezone errors are reported above. */
+      }
+    }
+    const hotel = input.travel?.accommodation;
+    if (hotel) {
+      for (const [dateKey, timeKey] of [
+        ["checkInDate", "checkInTime"],
+        ["checkOutDate", "checkOutTime"],
+      ] as const) {
+        if (hotel[timeKey] && !hotel[dateKey])
+          issue(
+            ["travel", "accommodation", timeKey],
+            "Provide the accommodation date with its time.",
+          );
+        if (
+          hotel[dateKey] &&
+          (hotel[dateKey]! < input.startDate || hotel[dateKey]! > input.endDate)
+        )
+          issue(
+            ["travel", "accommodation", dateKey],
+            "Accommodation dates must fall within travel dates.",
+          );
+      }
+      if (
+        hotel.checkInDate &&
+        hotel.checkOutDate &&
+        (hotel.checkOutDate < hotel.checkInDate ||
+          (hotel.checkInDate === hotel.checkOutDate &&
+            hotel.checkInTime &&
+            hotel.checkOutTime &&
+            hotel.checkOutTime <= hotel.checkInTime))
+      )
+        issue(
+          ["travel", "accommodation", "checkOutDate"],
+          "Check-out must follow check-in.",
+        );
+      try {
+        const a = flightAtDestination(input, "arrival", 180),
+          d = flightAtDestination(input, "departure", -180);
+        if (
+          hotel.checkInDate &&
+          hotel.checkInTime &&
+          a &&
+          `${hotel.checkInDate}T${hotel.checkInTime}` < `${a.date}T${a.time}`
+        )
+          issue(
+            ["travel", "accommodation", "checkInTime"],
+            "Planned check-in must allow arrival procedures and transfer time.",
+          );
+        if (
+          hotel.checkOutDate &&
+          hotel.checkOutTime &&
+          d &&
+          `${hotel.checkOutDate}T${hotel.checkOutTime}` > `${d.date}T${d.time}`
+        )
+          issue(
+            ["travel", "accommodation", "checkOutTime"],
+            "Plan check-out before the airport departure buffer begins.",
+          );
+      } catch {
+        /* Flight fields report invalid local times. */
+      }
+    }
   });
+
+// Creation-only policy. Never use a moving 'today' bound to parse stored snapshots.
+export function newTripSchema(now = new Date()) {
+  return tripInputSchema.superRefine((input, ctx) => {
+    if (
+      dateSchema.safeParse(input.startDate).success &&
+      (!input.timezone || timezoneSchema.safeParse(input.timezone).success) &&
+      input.startDate < calendarDate(now, input.timezone ?? "UTC")
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["startDate"],
+        message: "Start date must be today or later in your timezone.",
+      });
+  });
+}
 
 export const activitySchema = z.object({
   id: z.string().min(1).max(200),
@@ -119,7 +265,7 @@ export const itinerarySchema = z
           number: z.number().int().positive(),
           date: dateSchema,
           title: z.string().min(1).max(120),
-          activities: z.array(activitySchema).min(1).max(4),
+          activities: z.array(activitySchema).min(0).max(4),
           additionalCosts: additionalCostsSchema.optional(),
         }),
       )
@@ -160,7 +306,8 @@ export const itinerarySchema = z
           message: "AI days must include cost estimates.",
         });
       const expected = new Date(
-        Date.parse(`${itinerary.input.startDate}T00:00:00Z`) + index * DAY_MS,
+        Date.parse(`${itinerary.input.startDate}T00:00:00Z`) +
+          index * 86_400_000,
       )
         .toISOString()
         .slice(0, 10);
@@ -169,6 +316,19 @@ export const itinerarySchema = z
           code: "custom",
           message: "Itinerary days must follow travel dates in order.",
         });
+      try {
+        if (!scheduleWithinWindow(itinerary.input, day.date, day.activities))
+          ctx.addIssue({
+            code: "custom",
+            message:
+              "Activities conflict with airport travel constraints, or an ordinary day is empty.",
+          });
+      } catch {
+        ctx.addIssue({
+          code: "custom",
+          message: "Invalid travel schedule metadata.",
+        });
+      }
       let previousEnd = 0;
       day.activities.forEach((activity) => {
         const [hour, minute] = activity.time.split(":").map(Number);

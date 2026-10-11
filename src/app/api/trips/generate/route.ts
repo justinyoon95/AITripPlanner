@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { tripInputSchema } from "@/features/trips/schema";
+import { z } from "zod";
+import { validateNewTrip } from "@/lib/validate-trip";
 import { generateItinerary } from "@/lib/ai/itinerary-service";
 import { GenerationError } from "@/lib/ai/errors";
 import { readGenerationBody } from "@/lib/ai/request-body";
@@ -19,30 +20,34 @@ export async function POST(request: Request) {
         "Please request a trip from this application.",
         403,
       );
-    const parsed = tripInputSchema.safeParse(await readGenerationBody(request));
-    if (!parsed.success)
-      return Response.json(
-        {
-          error: {
-            code: "INVALID_REQUEST",
-            message: "Please check your trip details.",
-            fieldErrors: parsed.error.flatten().fieldErrors,
-          },
-        },
-        { status: 400, headers },
-      );
+    const input = validateNewTrip(await readGenerationBody(request));
     const key = createHash("sha256")
       .update(
         JSON.stringify({
-          ...parsed.data,
-          interests: [...parsed.data.interests].sort(),
+          ...input,
+          interests: [...input.interests].sort(),
         }),
       )
       .digest("hex");
     finish = generationGuard.acquire(key);
-    const itinerary = await generateItinerary(parsed.data, request.signal);
+    const itinerary = await generateItinerary(input, request.signal);
     return Response.json({ itinerary }, { headers });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      const fieldErrors: Record<string, string[]> = {};
+      for (const issue of error.issues)
+        (fieldErrors[issue.path.join(".")] ??= []).push(issue.message);
+      return Response.json(
+        {
+          error: {
+            code: "INVALID_REQUEST",
+            message: "Please check the highlighted trip details.",
+            fieldErrors,
+          },
+        },
+        { status: 400, headers },
+      );
+    }
     const failure =
       error instanceof GenerationError
         ? error
@@ -57,7 +62,17 @@ export async function POST(request: Request) {
         status: failure.status,
       });
     return Response.json(
-      { error: { code: failure.code, message: failure.message } },
+      {
+        error: {
+          code: failure.code,
+          message: failure.message,
+          ...(failure.code === "INVALID_DESTINATION"
+            ? { fieldErrors: { destination: [failure.message] } }
+            : failure.fieldErrors
+              ? { fieldErrors: failure.fieldErrors }
+              : {}),
+        },
+      },
       {
         status: failure.status,
         headers: {

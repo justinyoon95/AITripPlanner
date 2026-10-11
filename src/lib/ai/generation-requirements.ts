@@ -3,6 +3,10 @@ import type { TripInput } from "@/features/trips/types";
 import type { z } from "zod";
 import type { aiOutputSchema } from "./output-schema";
 import { GenerationError } from "./errors";
+import {
+  travelWindow,
+  scheduleWithinWindow,
+} from "@/features/trips/travel-planning";
 
 export function generationRequirements(raw: TripInput) {
   const input = tripInputSchema.parse(raw);
@@ -15,7 +19,19 @@ export function generationRequirements(raw: TripInput) {
       .toISOString()
       .slice(0, 10),
   }));
-  return { dayCount, activitiesPerDay, days };
+  const windows = days.map((day) => {
+    const window = travelWindow(input, day.date);
+    const activityCount = window.travelOnly
+      ? 0
+      : window.constrained
+        ? Math.min(
+            activitiesPerDay,
+            Math.max(1, Math.floor((window.end - window.start) / 120)),
+          )
+        : activitiesPerDay;
+    return { ...day, ...window, activityCount };
+  });
+  return { dayCount, activitiesPerDay, days, windows };
 }
 
 // Structured Outputs cannot express cross-field date order or interval arithmetic.
@@ -36,10 +52,11 @@ export function validateGeneratedSchedule(
         "INVALID_AI_DATES",
         `The AI returned incorrect dates or day ordering for Day ${index + 1}. No itinerary was saved. Please try again.`,
       );
-    if (day.activities.length !== required.activitiesPerDay)
+    const window = required.windows[index];
+    if (day.activities.length !== window.activityCount)
       throw new GenerationError(
         "INVALID_AI_PACE",
-        `The AI returned ${day.activities.length} activities on Day ${index + 1}; ${input.pace} pace requires ${required.activitiesPerDay}. No itinerary was saved. Please try again.`,
+        `The AI returned ${day.activities.length} activities on Day ${index + 1}; ${input.pace} pace requires ${window.activityCount}${window.constrained ? " after travel constraints" : ""}. No itinerary was saved. Please try again.`,
       );
     let previousEnd = 0;
     for (const activity of day.activities) {
@@ -58,5 +75,11 @@ export function validateGeneratedSchedule(
         );
       previousEnd = end;
     }
+    if (!scheduleWithinWindow(input, day.date, day.activities))
+      throw new GenerationError(
+        "INVALID_AI_TRAVEL_WINDOW",
+        `Day ${index + 1} conflicts with your travel or accommodation logistics. No itinerary was saved.`,
+        502,
+      );
   });
 }

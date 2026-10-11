@@ -2,6 +2,7 @@ import { GenerationError } from "./errors";
 
 // This detects specific unsupported assertions, not factual truth or every paraphrase.
 const assertions = [
+  /\b(?:festival|event|market|celebration|oktoberfest)\b.{0,70}\b(?:confirmed|guaranteed|takes place|will take place|tickets cost|admission is)\b/i,
   /\b(?:I|we)\s+(?:have\s+)?(?:searched|checked|verified|confirmed)\b/i,
   /\b(?:verified|confirmed|guaranteed)\s+(?:price|opening|availability|accessible|accessibility|route|booking)/i,
   /\b(?:has|holds|awarded|boasts|rated)\b.{0,35}\b(?:michelin|stars?|rating)/i,

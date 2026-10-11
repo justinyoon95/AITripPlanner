@@ -32,6 +32,7 @@ import { normalizeConversation } from "./conversation-normalizer";
 import { mockConversation } from "./mock-conversation";
 import { observeResponse, type AIObserver } from "./telemetry";
 import { conversationDiagnostic } from "./conversation-diagnostics";
+import { validateStoredGeography } from "@/lib/validate-trip";
 
 export const MAX_EDIT_OUTPUT_TOKENS = 4000;
 export function validateEditScope(request: EditRequest) {
@@ -112,6 +113,7 @@ export async function proposeItineraryEdit(
   observer?: AIObserver,
 ): Promise<EditResponse> {
   const request = editRequestSchema.parse(raw);
+  validateStoredGeography(request.itinerary.input);
   validateEditScope(request);
   if (request.pendingProposal) {
     const pending = request.pendingProposal;

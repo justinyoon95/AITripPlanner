@@ -1,0 +1,12 @@
+{
+  "importedAt": "2026-10-11T01:14:55.252Z",
+  "geoNames": "https://download.geonames.org/export/dump/cities500.zip",
+  "airportRevision": "a89e4e0dda9d9878337e2da190ebe1ef1d6af705",
+  "hashes": {
+    "tripplanner-cities500.zip": "b62dde97a05f61af34e71bb58647bb4327ff65fcbf31d4643e66bf51118b5854",
+    "tripplanner-regions.txt": "1da92a6323a5fec3176f3f743bf4cf4040fd56a876da55e46fbca23c863aa60a",
+    "tripplanner-airports.json": "a7754cbe722ea21f0f9ab1ef07f4f07ee1e85b9cc99191ebde0b49fabb3c149a"
+  },
+  "cities": 236012,
+  "airports": 7917
+}
