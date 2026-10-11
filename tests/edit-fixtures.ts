@@ -28,7 +28,9 @@ export function editRequest(session = editSession()): EditRequest {
     context: [],
   };
 }
-export function removeOperation(session = editSession()): EditOperation {
+export function removeOperation(
+  session = editSession(),
+): Extract<EditOperation, { type: "remove_activity" }> {
   const day = editRequest(session).itinerary.days[1];
   return {
     type: "remove_activity",

@@ -18,8 +18,15 @@ import {
 } from "./config";
 import { GenerationError } from "./errors";
 import { aiOutputSchema, aiOutputSchemaForTrip } from "./output-schema";
-import { itineraryInput, itineraryInstructions } from "./prompts";
+import {
+  itineraryInput,
+  itineraryInstructions,
+  GENERATION_PROMPT_VERSION,
+} from "./prompts";
 import { validateGeneratedSchedule } from "./generation-requirements";
+import { assertSupportedClaims } from "./claim-policy";
+import { observeResponse, type AIObserver } from "./telemetry";
+import { requestBoundary } from "./chat-policy";
 
 export function normalizeAIItinerary(
   raw: unknown,
@@ -32,6 +39,7 @@ export function normalizeAIItinerary(
       "The AI returned an incomplete or invalid itinerary. Please try again.",
     );
   validateGeneratedSchedule(parsed.data, input);
+  assertSupportedClaims(parsed.data);
   const result = itinerarySchema.safeParse({
     ...parsed.data,
     id: randomUUID(),
@@ -73,8 +81,21 @@ export function normalizeAIItinerary(
 export async function generateItinerary(
   rawInput: TripInput,
   callerSignal?: AbortSignal,
+  observer?: AIObserver,
 ): Promise<Itinerary> {
   const input = tripInputSchema.parse(rawInput);
+  const boundary = requestBoundary({
+    message: `${input.destination}\n${input.preferences}`,
+  });
+  if (
+    boundary?.kind === "refusal" &&
+    boundary.intent === "unsafe_or_disallowed"
+  )
+    throw new GenerationError(
+      "UNSAFE_REQUEST",
+      "Please use travel preferences without instruction overrides or requests for private configuration.",
+      422,
+    );
   const config = generationConfig();
   if (config.mode === "mock") {
     const mock = generateMockItinerary(input, randomUUID());
@@ -95,20 +116,28 @@ export async function generateItinerary(
     ? AbortSignal.any([deadline, callerSignal])
     : deadline;
   try {
-    const response = await createOpenAIClient(config.apiKey!).responses.parse(
-      {
-        model: config.model,
-        instructions: itineraryInstructions,
-        input: itineraryInput(input),
-        text: {
-          format: zodTextFormat(aiOutputSchemaForTrip(input), "trip_itinerary"),
-        },
-        max_output_tokens: outputTokenAllowance(
-          tripDayCount(input.startDate, input.endDate),
+    const response = await observeResponse(
+      () =>
+        createOpenAIClient(config.apiKey!).responses.parse(
+          {
+            model: config.model,
+            instructions: itineraryInstructions,
+            input: itineraryInput(input),
+            text: {
+              format: zodTextFormat(
+                aiOutputSchemaForTrip(input),
+                "trip_itinerary",
+              ),
+            },
+            max_output_tokens: outputTokenAllowance(
+              tripDayCount(input.startDate, input.endDate),
+            ),
+            store: false,
+          },
+          { signal },
         ),
-        store: false,
-      },
-      { signal },
+      { model: config.model, promptVersion: GENERATION_PROMPT_VERSION },
+      observer,
     );
     if (response.status === "incomplete")
       throw new GenerationError(

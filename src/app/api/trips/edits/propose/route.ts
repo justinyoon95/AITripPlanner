@@ -47,7 +47,7 @@ export async function POST(request: Request) {
           ? error
           : new GenerationError(
               "EDIT_FAILED",
-              "We couldn't propose these changes. Your itinerary is unchanged.",
+              "We couldn't respond to this request. Your itinerary is unchanged.",
               500,
             );
     if (failure.status >= 500)

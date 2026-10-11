@@ -25,12 +25,37 @@ beforeEach(() => {
   parse.mockResolvedValue({
     status: "completed",
     output: [],
-    output_parsed: wire(),
+    output_parsed: {
+      message: wire().message,
+      presentation: "response",
+      boundary: null,
+      proposal: { operations: wire().operations },
+      calculation: null,
+    },
   });
 });
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+});
+it("uses exactly one existing classification call for business-name clarification", async () => {
+  parse.mockResolvedValue({
+    status: "completed",
+    output: [],
+    output_parsed: {
+      presentation: "clarification",
+      boundary: null,
+      message: "Do you mean the retailer or another business? Which branch?",
+      proposal: null,
+      calculation: null,
+    },
+  });
+  const req = { ...editRequest(), message: "When does donqi hote close?" };
+  expect((await proposeItineraryEdit(req)).kind).toBe("clarification");
+  expect(parse).toHaveBeenCalledTimes(1);
+  expect(
+    JSON.parse(parse.mock.calls[0][0].input).itinerary.input.destination,
+  ).toBe(req.itinerary.input.destination);
 });
 it("uses strict structured operations, bounded output and only current itinerary/context", async () => {
   const request = editRequest();

@@ -18,9 +18,20 @@ import { itineraryFingerprint } from "@/features/trips/fingerprint";
 import { generationConfig, GENERATION_TIMEOUT_MS } from "./config";
 import { createOpenAIClient } from "./client";
 import { GenerationError } from "./errors";
-import { aiEditOutputSchema } from "./edit-output-schema";
-import { editInput, editInstructions } from "./edit-prompts";
-import { mockEdit } from "./mock-editor";
+import {
+  aiEditOutputSchema,
+  conversationOutputSchema,
+} from "./edit-output-schema";
+import {
+  editInput,
+  editInstructions,
+  CHAT_PROMPT_VERSION,
+} from "./edit-prompts";
+import { securityBoundary } from "./chat-policy";
+import { normalizeConversation } from "./conversation-normalizer";
+import { mockConversation } from "./mock-conversation";
+import { observeResponse, type AIObserver } from "./telemetry";
+import { conversationDiagnostic } from "./conversation-diagnostics";
 
 export const MAX_EDIT_OUTPUT_TOKENS = 4000;
 export function validateEditScope(request: EditRequest) {
@@ -98,27 +109,60 @@ export async function normalizeEditResponse(
 export async function proposeItineraryEdit(
   raw: EditRequest,
   callerSignal?: AbortSignal,
+  observer?: AIObserver,
 ): Promise<EditResponse> {
   const request = editRequestSchema.parse(raw);
   validateEditScope(request);
+  if (request.pendingProposal) {
+    const pending = request.pendingProposal;
+    if (
+      pending.baseVersionId !== request.baseVersionId ||
+      pending.baseRevision !== request.baseRevision ||
+      pending.baseFingerprint !==
+        (await itineraryFingerprint(request.itinerary))
+    ) {
+      conversationDiagnostic("pending_proposal", "STALE_PROPOSAL");
+      throw new EditError(
+        "STALE_PROPOSAL",
+        "That proposal is no longer based on the active itinerary. Reject it and request a new proposal.",
+      );
+    }
+    // Rebuild against the active snapshot, not a browser-supplied candidate.
+    applyEditOperations(request.itinerary, pending.operations, pending.scope);
+  }
+  const boundary = securityBoundary(request);
+  if (boundary) return boundary;
   const config = generationConfig();
-  if (config.mode === "mock")
-    return normalizeEditResponse(mockEdit(request), request, "mock");
+  if (config.mode === "mock") {
+    return normalizeConversation(mockConversation(request), request, (raw) =>
+      normalizeEditResponse(raw, request, "mock"),
+    );
+  }
   const deadline = AbortSignal.timeout(GENERATION_TIMEOUT_MS);
   const signal = callerSignal
     ? AbortSignal.any([deadline, callerSignal])
     : deadline;
   try {
-    const response = await createOpenAIClient(config.apiKey!).responses.parse(
-      {
-        model: config.model,
-        instructions: editInstructions,
-        input: editInput(request),
-        text: { format: zodTextFormat(aiEditOutputSchema, "itinerary_edit") },
-        max_output_tokens: MAX_EDIT_OUTPUT_TOKENS,
-        store: false,
-      },
-      { signal },
+    const response = await observeResponse(
+      () =>
+        createOpenAIClient(config.apiKey!).responses.parse(
+          {
+            model: config.model,
+            instructions: editInstructions,
+            input: editInput(request),
+            text: {
+              format: zodTextFormat(
+                conversationOutputSchema,
+                "travel_conversation",
+              ),
+            },
+            max_output_tokens: MAX_EDIT_OUTPUT_TOKENS,
+            store: false,
+          },
+          { signal },
+        ),
+      { model: config.model, promptVersion: CHAT_PROMPT_VERSION },
+      observer,
     );
     if (response.status === "incomplete")
       throw new GenerationError(
@@ -137,8 +181,15 @@ export async function proposeItineraryEdit(
         "The AI could not propose this edit. Please adjust your request.",
         422,
       );
-    return await normalizeEditResponse(response.output_parsed, request, "ai");
+    return await normalizeConversation(response.output_parsed, request, (raw) =>
+      normalizeEditResponse(raw, request, "ai"),
+    );
   } catch (error) {
+    if (
+      error instanceof SyntaxError ||
+      (error instanceof Error && error.name === "ZodError")
+    )
+      conversationDiagnostic("schema", "PROVIDER_PARSE_FAILED");
     if (error instanceof GenerationError || error instanceof EditError)
       throw error;
     if (deadline.aborted || error instanceof OpenAI.APIConnectionTimeoutError)
