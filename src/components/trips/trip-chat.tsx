@@ -17,6 +17,8 @@ import {
   MAX_CHAT_MESSAGES,
   MAX_VERSIONS,
 } from "@/features/trips/session-schema";
+import { responseLabels } from "@/features/trips/chat-contract";
+import { shouldShowUncertaintyNotice } from "@/features/trips/uncertainty-policy";
 
 type Editor = ReturnType<typeof useTripEditor>;
 export function TripChat({
@@ -39,10 +41,7 @@ export function TripChat({
   }, [editor.session.messages.length]);
   const visibleView = editor.scope ? "chat" : view;
   const blocked = Boolean(
-    editor.busy ||
-    editor.session.pendingProposal ||
-    editor.session.messages.length >= MAX_CHAT_MESSAGES ||
-    editor.session.versions.length >= MAX_VERSIONS,
+    editor.busy || editor.session.messages.length + 2 > MAX_CHAT_MESSAGES,
   );
   return (
     <section
@@ -188,9 +187,21 @@ export function TripChat({
                   <strong>
                     {message.role === "user" ? "You" : "TripPlannerAI"}
                   </strong>
-                  <span>{message.status}</span>
+                  <span>
+                    {message.intent && message.role === "assistant"
+                      ? responseLabels[message.intent]
+                      : message.status}
+                    {message.intent === "itinerary_edit" &&
+                      message.status !== "proposed" &&
+                      ` · ${message.status}`}
+                  </span>
                 </header>
                 <p>{message.content}</p>
+                {!mockMode && shouldShowUncertaintyNotice(message) && (
+                  <small className="chat-evidence">
+                    Unverified suggestion; check details before traveling.
+                  </small>
+                )}
                 <time dateTime={message.createdAt}>
                   {new Date(message.createdAt).toLocaleTimeString(undefined, {
                     hour: "2-digit",
@@ -203,7 +214,7 @@ export function TripChat({
           {editor.busy === "request" && (
             <p className="edit-loading" role="status">
               <LoaderCircle size={15} className="spin" />
-              Preparing a proposal...
+              Considering your request...
             </p>
           )}
           {editor.session.pendingProposal && (
@@ -233,7 +244,7 @@ export function TripChat({
               disabled={blocked}
               value={text}
               onChange={(event) => setText(event.target.value)}
-              placeholder="Make Day 2 less busy..."
+              placeholder="Make Day 2 less busy, or ask about your trip..."
             />
             <div>
               <small>{text.length}/1,000</small>
@@ -252,7 +263,8 @@ export function TripChat({
             editor.session.versions.length >= MAX_VERSIONS) && (
             <p className="editor-disclaimer">
               This trip has reached its local history limit. Existing history is
-              preserved.
+              preserved. At the version limit, questions remain available until
+              the message limit.
             </p>
           )}
         </div>

@@ -1,12 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import {
-  EditError,
-  MAX_CONTEXT_MESSAGES,
-  editRequestSchema,
-  type EditScope,
-} from "./edit-schema";
+import { EditError, editRequestSchema, type EditScope } from "./edit-schema";
 import { requestEdit } from "./edit-client";
+import { conversationContext } from "./chat-context";
 import {
   MAX_CHAT_MESSAGES,
   MAX_VERSIONS,
@@ -107,18 +103,13 @@ export function useTripEditor(initial: TripSession, initialWarning?: string) {
         throw new Error("Describe a change using 1 to 1,000 characters.");
       const base = current.current;
       if (base.pendingProposal)
-        throw new Error(
-          "Accept or reject the current proposal before requesting another change.",
-        );
+        await validateProposal(base, base.pendingProposal);
       if (base.messages.length + 2 > MAX_CHAT_MESSAGES)
         throw new Error(
           "This trip has reached its 100-message limit. Your history and itinerary are preserved.",
         );
-      if (base.versions.length >= MAX_VERSIONS)
-        throw new Error(
-          "This trip has reached its 25-version limit. Your history and itinerary are preserved.",
-        );
       const user: ChatMessage = {
+        versionId: base.activeVersionId,
         id: crypto.randomUUID(),
         role: "user",
         content: message.data,
@@ -140,28 +131,44 @@ export function useTripEditor(initial: TripSession, initialWarning?: string) {
             baseRevision: started.revision,
             message: message.data,
             scope,
-            context: base.messages
-              .filter(
-                (item) =>
-                  !["pending", "failed", "interrupted"].includes(item.status),
-              )
-              .slice(-MAX_CONTEXT_MESSAGES)
-              .map((item) => ({
-                role: item.role,
-                content: `[${item.status}] ${item.content}`.slice(0, 1000),
-              })),
+            context: conversationContext(base),
+            pendingProposal: base.pendingProposal
+              ? {
+                  id: base.pendingProposal.id,
+                  baseVersionId: base.pendingProposal.baseVersionId,
+                  baseRevision: base.pendingProposal.baseRevision,
+                  baseFingerprint: base.pendingProposal.baseFingerprint,
+                  scope: base.pendingProposal.scope,
+                  operations: base.pendingProposal.operations,
+                }
+              : null,
           },
           abort.current.signal,
         );
         if (abort.current.signal.aborted || !mounted.current) return;
+        if (
+          response.kind === "proposal" &&
+          started.versions.length >= MAX_VERSIONS
+        )
+          throw new Error(
+            "This trip has reached its 25-version limit. Questions remain available; existing history is preserved.",
+          );
         if (response.kind === "proposal")
           await validateProposal(started, response.proposal);
         const assistant: ChatMessage = {
           id: crypto.randomUUID(),
           role: "assistant",
           content: response.message,
+          versionId: started.activeVersionId,
           createdAt: new Date().toISOString(),
-          status: response.kind === "proposal" ? "proposed" : "clarification",
+          status:
+            response.kind === "proposal"
+              ? "proposed"
+              : response.kind === "clarification"
+                ? "clarification"
+                : "answered",
+          intent: response.intent,
+          evidence: response.evidence,
           proposalId:
             response.kind === "proposal" ? response.proposal.id : null,
         };
@@ -172,12 +179,16 @@ export function useTripEditor(initial: TripSession, initialWarning?: string) {
               ...value.messages.map((item) =>
                 item.id === user.id
                   ? { ...item, status: "answered" as const }
-                  : item,
+                  : response.kind === "proposal" && item.status === "proposed"
+                    ? { ...item, status: "stale" as const }
+                    : item,
               ),
               assistant,
             ],
             pendingProposal:
-              response.kind === "proposal" ? response.proposal : null,
+              response.kind === "proposal"
+                ? response.proposal
+                : value.pendingProposal,
           })),
         );
       } catch (failure) {

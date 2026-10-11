@@ -1,6 +1,6 @@
 # TripPlannerAI
 
-A Next.js trip planner with structured OpenAI generation, targeted conversational editing, estimated costs, and browser-persisted immutable itinerary versions. Phase 3 preserves the existing frontend and generation flow. Authentication, databases, and maps are not implemented.
+A Next.js trip planner with structured OpenAI generation, targeted conversational editing, deterministic travel-budget answers, and browser-persisted immutable itinerary versions. Phase 3.5 adds conversation-first responses with optional validated proposals/calculations, uncertainty safeguards, and an opt-in evaluation framework. Authentication, databases, and maps are not implemented.
 
 ## Run locally
 
@@ -36,6 +36,7 @@ The editor uses the same private key, model, and mode as trip generation. With `
 4. Review the explicit before/after activities and estimated cost change. Nothing changes until **Accept changes**. **Reject** leaves the itinerary unchanged.
 5. Refresh to verify persistence. Use **Undo** or **History → Restore version** to revisit earlier snapshots. History shows descriptions, creation times, parent versions, and the active version.
 6. Request removal of a day's last activity to check the one-activity minimum; request a conflicting time to check schedule validation. Invalid proposals explain the issue, not silently fix unrelated activities.
+7. Keep a draft open and ask "Make it flexible" or an informational question. Refinement replaces the draft; questions keep it available. Saying "Yes" in chat never accepts changes.
 
 One proposal request may incur API charges. Accept/reject/undo/restore are local and make no OpenAI calls. Automated tests and sample-mode browser checks do not confirm real-provider availability or recommendation quality. Verify a real edit with your configured account before release.
 
@@ -48,6 +49,8 @@ TRIP_GENERATION_MODE=mock npm run dev
 This explicitly exercises the API, form, editor, and storage with labeled illustrative data, without keys or paid calls. Sample editing supports naming a day and requesting "less busy", selecting an activity and requesting "cheaper" or "shopping", and empty-day explanations; it is not an offline language model. Mock mode is rejected in production. AI errors never silently fall back to sample data. Restore `ai` mode for real generation/editing.
 
 ## Checks
+
+See [AI reliability and evaluation](docs/AI_RELIABILITY.md) for response boundaries, manual chat checks, the 115-scenario synthetic dataset (original 100 retained), and optional paid sequential evaluations. Ordinary tests never run live evaluations. `npm run eval:live` refuses paid calls unless explicitly invoked with `AI_EVAL_ALLOW_PAID=yes`; generated reports are ignored. Conversation quality remains model-dependent; no real-model accuracy results are claimed from mocked tests.
 
 ```sh
 npm run lint

@@ -1320,6 +1320,11 @@ fieldset:last-child {
   margin: 8px 0;
   white-space: pre-wrap;
 }
+.chat-evidence {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
 .edit-loading {
   display: flex;
   gap: 8px;

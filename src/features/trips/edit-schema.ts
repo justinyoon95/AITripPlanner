@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { chatIntentSchema, evidenceSchema } from "./chat-contract";
 import {
   activitySchema,
   additionalCostsSchema,
@@ -61,9 +62,38 @@ export const editRequestSchema = z.strictObject({
       z.strictObject({
         role: z.enum(["user", "assistant"]),
         content: z.string().min(1).max(1000),
+        intent: chatIntentSchema.optional(),
+        id: z.uuid().optional(),
+        outcome: z
+          .enum([
+            "answered",
+            "proposed",
+            "accepted",
+            "rejected",
+            "stale",
+            "clarification",
+          ])
+          .optional(),
+        versionId: z.uuid().optional(),
       }),
     )
     .max(MAX_CONTEXT_MESSAGES),
+  // Optional for existing clients/sessions. Context only, never acceptance.
+  pendingProposal: z
+    .strictObject({
+      id: z.uuid(),
+      baseVersionId: z.uuid(),
+      baseRevision: z
+        .number()
+        .int()
+        .nonnegative()
+        .max(Number.MAX_SAFE_INTEGER - 1),
+      baseFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+      scope: editScopeSchema.nullable(),
+      operations: editOperationsSchema,
+    })
+    .nullable()
+    .optional(),
 });
 export const proposalSchema = z.strictObject({
   id: z.uuid(),
@@ -82,10 +112,26 @@ export const editResponseSchema = z.discriminatedUnion("kind", [
     kind: z.literal("proposal"),
     message: z.string().min(1).max(1000),
     proposal: proposalSchema,
+    intent: z.literal("itinerary_edit").optional(),
+    evidence: evidenceSchema.optional(),
   }),
   z.strictObject({
     kind: z.literal("clarification"),
     message: z.string().min(1).max(1000),
+    intent: z.literal("clarification_needed").optional(),
+    evidence: evidenceSchema.optional(),
+  }),
+  z.strictObject({
+    kind: z.literal("answer"),
+    intent: z.literal("travel_question"),
+    message: z.string().min(1).max(1000),
+    evidence: evidenceSchema,
+  }),
+  z.strictObject({
+    kind: z.literal("refusal"),
+    intent: chatIntentSchema.extract(["out_of_scope", "unsafe_or_disallowed"]),
+    message: z.string().min(1).max(1000),
+    evidence: z.literal("none"),
   }),
 ]);
 export type EditOperation = z.infer<typeof editOperationSchema>;

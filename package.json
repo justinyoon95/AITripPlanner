@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "eval:live": "vitest run --config evals/vitest.live.config.mts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

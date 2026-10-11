@@ -2,6 +2,7 @@ import { z } from "zod";
 import { itinerarySchema } from "./schema";
 import { proposalSchema } from "./edit-schema";
 import { canonicalJSON } from "./fingerprint";
+import { chatIntentSchema, evidenceSchema } from "./chat-contract";
 
 export const MAX_VERSIONS = 25;
 export const MAX_CHAT_MESSAGES = 100;
@@ -22,6 +23,9 @@ export const chatMessageSchema = z.strictObject({
     "clarification",
   ]),
   proposalId: z.uuid().nullable(),
+  intent: chatIntentSchema.optional(),
+  evidence: evidenceSchema.optional(),
+  versionId: z.uuid().optional(),
 });
 export const versionSchema = z.strictObject({
   id: z.uuid(),
