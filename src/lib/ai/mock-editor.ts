@@ -18,6 +18,12 @@ export function mockEdit(request: EditRequest): AIEditOutput {
         "Sample mode: please select an activity or name a day, such as 'Make Day 2 less busy'.",
       operations: [],
     };
+  if (!day.activities.length)
+    return {
+      kind: "clarification",
+      message: `Day ${day.number} is reserved for travel logistics. There are no sightseeing activities to replace or remove; choose another day.`,
+      operations: [],
+    };
   const activity = request.scope?.activityId
     ? day.activities.find((item) => item.id === request.scope!.activityId)!
     : day.activities.at(-1)!;

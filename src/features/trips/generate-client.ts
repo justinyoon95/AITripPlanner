@@ -2,6 +2,14 @@ import {
   generationErrorSchema,
   generationSuccessSchema,
 } from "./generation-contract";
+export class TripValidationError extends Error {
+  constructor(
+    message: string,
+    public fieldErrors: Record<string, string[]> = {},
+  ) {
+    super(message);
+  }
+}
 import type { Itinerary, TripInput } from "./types";
 
 export async function requestItinerary(
@@ -33,10 +41,11 @@ export async function requestItinerary(
   }
   if (!response.ok) {
     const result = generationErrorSchema.safeParse(body);
-    throw new Error(
+    throw new TripValidationError(
       result.success
         ? result.data.error.message
         : "Trip generation is unavailable. Please try again later.",
+      result.success ? result.data.error.fieldErrors : undefined,
     );
   }
   const result = generationSuccessSchema.safeParse(body);

@@ -8,6 +8,8 @@ import {
 } from "@/features/trips/session-storage";
 import { storePreview } from "@/features/trips/storage";
 import { editSession, withProposal } from "./edit-fixtures";
+import { generateMockItinerary } from "@/features/trips/mock-generator";
+import { createSession } from "@/features/trips/versioning";
 let values: Map<string, string>;
 beforeEach(() => {
   values = new Map();
@@ -19,6 +21,57 @@ beforeEach(() => {
   });
 });
 afterEach(() => vi.unstubAllGlobals());
+it("preserves complete planning metadata across preview migration and session reload", async () => {
+  const base = editSession().versions[0].itinerary;
+  const itinerary = generateMockItinerary(
+    {
+      ...base.input,
+      destination: "Osaka, Japan",
+      resolvedDestination: {
+        id: "1853909",
+        name: "Osaka",
+        region: "Osaka",
+        country: "Japan",
+        countryCode: "JP",
+        latitude: 34.69374,
+        longitude: 135.50218,
+        timezone: "Asia/Tokyo",
+      },
+      travelers: 2,
+      seasonalPreference: "prioritize",
+      timezone: "America/Toronto",
+      travel: {
+        arrival: {
+          number: "KE703",
+          date: base.input.startDate,
+          time: "23:00",
+          airportCode: "KIX",
+          airport: {
+            code: "KIX",
+            name: "Kansai International Airport",
+            countryCode: "JP",
+            timezone: "Asia/Tokyo",
+          },
+        },
+        accommodation: {
+          name: "User-supplied hotel",
+          location: "Central Osaka",
+          checkInDate: base.input.endDate,
+          checkInTime: "15:00",
+        },
+      },
+    },
+    base.id,
+  );
+  storePreview(itinerary);
+  expect(readSession(base.id)!.versions[0].itinerary.input).toEqual(
+    itinerary.input,
+  );
+  const session = createSession(itinerary);
+  writeSession(session);
+  expect(await recoverSession(readSession(base.id)!)).toEqual(session);
+  expect(values.has(`trip-planner:preview:v1:${base.id}`)).toBe(true);
+});
 it("migrates the legacy preview without deleting or replacing it", () => {
   const session = editSession();
   storePreview(session.versions[0].itinerary);

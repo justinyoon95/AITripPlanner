@@ -8,6 +8,7 @@ import {
   type EditScope,
 } from "./edit-schema";
 import type { Itinerary } from "./types";
+import { travelWindow, scheduleWithinWindow } from "./travel-planning";
 
 export function applyEditOperations(
   base: Itinerary,
@@ -110,7 +111,10 @@ export function applyEditOperations(
     }
   }
   for (const day of result.days.filter((item) => affectedDays.has(item.id))) {
-    if (!day.activities.length)
+    if (
+      !day.activities.length &&
+      !travelWindow(result.input, day.date).travelOnly
+    )
       throw new EditError(
         "EMPTY_DAY",
         `Day ${day.number} would have no activities. This milestone requires at least one activity per day. Try replacing the last activity with something relaxed instead.`,
@@ -129,6 +133,11 @@ export function applyEditOperations(
         `Day ${day.number} would contain duplicate activity names. Please choose a different activity.`,
       );
     day.activities.sort((a, b) => a.time.localeCompare(b.time));
+    if (!scheduleWithinWindow(result.input, day.date, day.activities))
+      throw new EditError(
+        "INVALID_SCHEDULE",
+        `Day ${day.number} conflicts with the arrival, departure, or planned accommodation window. Request a time outside those logistics; travel-only days cannot contain activities.`,
+      );
   }
   if (canonicalJSON(result) === canonicalJSON(original))
     throw new EditError(

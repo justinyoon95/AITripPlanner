@@ -35,7 +35,7 @@ export const aiOutputSchema = z.object({
               estimatedCost: estimate,
             }),
           )
-          .min(1)
+          .min(0)
           .max(4),
       }),
     )
@@ -52,7 +52,10 @@ export function aiOutputSchemaForTrip(input: TripInput) {
         day.extend({
           number: z.number().int().min(1).max(required.dayCount),
           date: z.enum(required.days.map((item) => item.date)),
-          activities: day.shape.activities.length(required.activitiesPerDay),
+          activities:
+            input.travel?.arrival?.date || input.travel?.departure?.date
+              ? day.shape.activities
+              : day.shape.activities.length(required.activitiesPerDay),
         }),
       )
       .length(required.dayCount),

@@ -87,7 +87,7 @@ describe("generation route", () => {
       ),
     );
     const result = await POST(
-      request({ ...input, destination: "Timeout test" }),
+      request({ ...input, destination: "Toronto, Canada" }),
     );
     expect(result.status).toBe(504);
     expect(await result.json()).toEqual({
@@ -100,7 +100,7 @@ describe("generation route", () => {
       new Error("private provider details with credentials"),
     );
     const failure = await POST(
-      request({ ...input, destination: "Other failure" }),
+      request({ ...input, destination: "Paris, France" }),
     );
     expect(failure.status).toBe(500);
     expect(JSON.stringify(await failure.json())).not.toContain("credentials");

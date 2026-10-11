@@ -18,6 +18,7 @@ import { summarizeCosts, summarizeDayCosts } from "@/features/trips/costs";
 import { formatDate, formatMoney } from "@/features/trips/format";
 import { buttonVariants } from "@/components/ui/button";
 import type { ReactNode } from "react";
+import { travelWindow, windowLabel } from "@/features/trips/travel-planning";
 
 const categoryIcons = {
   Food: Utensils,
@@ -56,6 +57,13 @@ export function ItineraryView({
               {days.length} {days.length === 1 ? "day" : "days"}
             </span>
             <span className="capitalize">{input.pace} pace</span>
+            {input.travelers && (
+              <span>
+                {input.travelers}{" "}
+                {input.travelers === 1 ? "traveler" : "travelers"}; whole-party
+                estimates
+              </span>
+            )}
           </div>
         </div>
         <Link
@@ -124,6 +132,17 @@ export function ItineraryView({
                   </button>
                 )}
               </header>
+              {travelWindow(input, day.date).notes.length > 0 && (
+                <div className="travel-logistics">
+                  <h3>Travel logistics</h3>
+                  <p>{windowLabel(travelWindow(input, day.date))}</p>
+                  <ul>
+                    {travelWindow(input, day.date).notes.map((note) => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="activity-list">
                 {day.activities.map((activity) => {
                   const Icon = categoryIcons[activity.category];
@@ -255,7 +274,7 @@ export function ItineraryView({
             </div>
             <p className="budget-disclaimer">
               {itinerary.source === "ai"
-                ? "Estimates for one traveler include activities, accommodation, local transport, and additional meals. Travel to and from the destination is excluded. These are not verified prices."
+                ? `Estimates for ${input.travelers ?? 1} traveler${(input.travelers ?? 1) === 1 ? "" : "s"} cover the whole party, including activities, accommodation, local transport, and additional meals. Travel to and from the destination is excluded. Prices are not verified.`
                 : "Flights, accommodation, and transport are not included. Sample costs are illustrative, not local price estimates."}
             </p>
             {itinerary.budgetAssessment && (
@@ -290,6 +309,29 @@ export function ItineraryView({
               <>
                 <h3>Your notes</h3>
                 <p>{input.preferences}</p>
+              </>
+            )}
+            {input.seasonalPreference && (
+              <p>
+                Seasonal experiences:{" "}
+                {input.seasonalPreference === "exclude"
+                  ? "not specifically included"
+                  : input.seasonalPreference === "prioritize"
+                    ? "prioritized"
+                    : "included when relevant"}
+              </p>
+            )}
+            {input.travel?.accommodation && (
+              <>
+                <h3>Accommodation</h3>
+                <p>
+                  {[
+                    input.travel.accommodation.name,
+                    input.travel.accommodation.location,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Not specified"}
+                </p>
               </>
             )}
             {itinerary.assumptions.length > 0 && (

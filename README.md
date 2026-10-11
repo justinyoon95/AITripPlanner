@@ -2,6 +2,8 @@
 
 A Next.js trip planner with structured OpenAI generation, targeted conversational editing, deterministic travel-budget answers, and browser-persisted immutable itinerary versions. Phase 3.5 adds conversation-first responses with optional validated proposals/calculations, uncertainty safeguards, and an opt-in evaluation framework. Authentication, databases, and maps are not implemented.
 
+Phase 3.6 adds geographic destination selection, strict creation dates, optional flight/accommodation constraints, whole-party estimates and seasonal preferences. See [planning experience, data sources and limitations](docs/PHASE3_6.md).
+
 ## Run locally
 
 Use Node.js 22.13+ or a current supported LTS release.
@@ -99,16 +101,16 @@ RHF and the backend share one Zod request schema. The provider wire schema exclu
 
 ## Reliability and limitations
 
-- Maximum 14 inclusive days; past dates remain allowed for exploration.
+- Maximum 14 inclusive days; new trips start today or later in the validated user calendar timezone. Historical trips remain viewable.
 - Default `gpt-4.1-mini` supports [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses). A replacement model must support Responses/Structured Outputs and be tested for cost/quality.
 - Output allowance: `min(12000, 1000 + 850 * inclusiveDays)`: 1,850 tokens for one day, 3,550 for three, 12,000 at the cap. This bounds output, not exact price or completion. Input tokens are also billable; consult [model pricing](https://developers.openai.com/api/docs/models/gpt-4.1-mini).
 - Server timeout: 90 seconds; browser timeout: 110 seconds; SDK retries: zero. Incomplete output is rejected. Cancellation/timeouts do not guarantee provider billing stops.
 - Request bodies: 32 KiB maximum, 10-second read timeout. Dates, lengths, activity ordering/non-overlap, pace, unique IDs, and nonnegative costs are validated.
 - Edit bodies: 128 KiB maximum; messages ≤1,000 characters; at most eight recent context messages (each ≤1,000 characters), six operations, and 4,000 output tokens. Only current input/days and recent messages are sent, never all version snapshots. Complex/ambiguous requests receive clarification or an actionable error, with no automatic paid repair.
-- Generation keeps its 2/3/4 pace-based activity count. Editing allows one to four activities per day; changes are all-or-nothing and may not overlap or cross midnight. Selected scopes, identities, unique per-day names, and conflicting operations are validated. Cost totals are recomputed in code, never trusted from the model.
+- Ordinary generation keeps its 2/3/4 pace-based activity count; constrained travel days have reduced counts, with zero activities only when a flight boundary has no safe known window. Editing allows one to four activities on ordinary days and enforces the same flight/hotel windows. Changes are all-or-nothing and may not overlap or cross midnight. Cost totals are recomputed in code, never trusted from the model.
 - Form blocks duplicate submits. A bounded process-local guard rejects identical requests while running and for 20 seconds after success/failure. Storage-only retry reuses a successful result while the form stays mounted.
 - **Before public deployment**, add durable server-side rate limiting, abuse protection, concurrency/spending controls, and usage/error metrics. The local guard is not a distributed quota: serverless instances have independent maps; different inputs bypass it; identical users may briefly collide. Origin checks are not authentication.
-- Costs estimate one traveler: activities, accommodation, local transport, and additional meals not already included in activities. Travel to/from the destination is excluded. Totals are computed and over-budget plans flagged without artificially lowering prices. All recommendations need verification.
+- Costs estimate the whole party (1-10 travelers, default one; legacy trips retain one-traveler meaning): activities, accommodation, local transport and additional meals not already included in activities. Travel to/from the destination is excluded. Totals are computed and over-budget plans flagged without artificially lowering prices. All recommendations need verification.
 - Major-unit amounts rounded to two decimals are approximations, not a financial ledger or currency conversion engine.
 - Inputs go to OpenAI; `store: false` disables Responses storage, not all provider retention. Avoid sensitive preferences. Logs contain only safe error codes/statuses, not keys, prompts, or provider payloads.
 - Preview links and version history are local to the browser/origin. Clearing site data removes them; they are not shareable or durable. Legacy previews gain deterministic day IDs and an initial version, without deleting old data. Sessions are capped at 25 snapshots, 100 chat messages, and approximately 2 MiB serialized UTF-16 size; limits are explicit, with no silent pruning. A failed write does not publish an accepted change.

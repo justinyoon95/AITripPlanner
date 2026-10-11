@@ -2,11 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
-import {
-  itinerarySchema,
-  tripDayCount,
-  tripInputSchema,
-} from "@/features/trips/schema";
+import { itinerarySchema, tripDayCount } from "@/features/trips/schema";
 import { generateMockItinerary } from "@/features/trips/mock-generator";
 import { roundMoney, summarizeCosts } from "@/features/trips/costs";
 import type { Itinerary, TripInput } from "@/features/trips/types";
@@ -27,6 +23,7 @@ import { validateGeneratedSchedule } from "./generation-requirements";
 import { assertSupportedClaims } from "./claim-policy";
 import { observeResponse, type AIObserver } from "./telemetry";
 import { requestBoundary } from "./chat-policy";
+import { validateNewTrip } from "@/lib/validate-trip";
 
 export function normalizeAIItinerary(
   raw: unknown,
@@ -83,9 +80,9 @@ export async function generateItinerary(
   callerSignal?: AbortSignal,
   observer?: AIObserver,
 ): Promise<Itinerary> {
-  const input = tripInputSchema.parse(rawInput);
+  const input = validateNewTrip(rawInput);
   const boundary = requestBoundary({
-    message: `${input.destination}\n${input.preferences}`,
+    message: `${input.destination}\n${input.preferences}\n${JSON.stringify(input.travel ?? {})}`,
   });
   if (
     boundary?.kind === "refusal" &&

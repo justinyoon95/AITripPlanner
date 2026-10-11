@@ -27,8 +27,27 @@ const itinerary = generateMockItinerary(input, previewId);
 beforeEach(() => {
   vi.resetAllMocks();
   generate.mockResolvedValue(itinerary);
+  const city = {
+    id: "1857910",
+    name: "Kyoto",
+    region: "Kyoto",
+    countryCode: "JP",
+    country: "Japan",
+    latitude: 35.02107,
+    longitude: 135.75385,
+    timezone: "Asia/Tokyo",
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({ destination: city, destinations: [city] }),
+    ),
+  );
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 async function fill(endDate = input.endDate) {
   render(<TripForm destination={input.destination} />);
   fireEvent.change(screen.getByLabelText("Start date"), {
@@ -104,4 +123,43 @@ it("validates the same inclusive 14-day limit before calling the API", async () 
     "14 days or fewer",
   );
   expect(generate).not.toHaveBeenCalled();
+});
+it("clears an invalidated end date rather than silently shifting it", async () => {
+  await fill();
+  fireEvent.change(screen.getByLabelText("Start date"), {
+    target: { value: "2026-12-10" },
+  });
+  expect(screen.getByLabelText("End date")).toHaveValue("");
+  expect(screen.getByLabelText("End date")).toHaveAttribute(
+    "min",
+    "2026-12-10",
+  );
+  expect(screen.getByLabelText("End date")).toHaveAttribute(
+    "max",
+    "2026-12-23",
+  );
+  expect(generate).not.toHaveBeenCalled();
+});
+it("keeps optional details collapsed and resolves manual text before generation", async () => {
+  await fill();
+  expect(document.querySelector("details")).not.toHaveAttribute("open");
+  await userEvent.click(
+    screen.getByRole("button", { name: "Preview my itinerary" }),
+  );
+  await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+  expect(generate.mock.calls[0][0].resolvedDestination.id).toBe("1857910");
+  expect(generate.mock.calls[0][0].travelers).toBe(1);
+  expect(generate.mock.calls[0][0].seasonalPreference).toBe("include");
+});
+it("does not generate a trip when typed geography cannot be resolved", async () => {
+  vi.mocked(fetch).mockImplementation(async () =>
+    Response.json({ error: "Select a city and country." }, { status: 400 }),
+  );
+  await fill();
+  await userEvent.click(
+    screen.getByRole("button", { name: "Preview my itinerary" }),
+  );
+  await screen.findByText("Select a city and country.");
+  expect(generate).not.toHaveBeenCalled();
+  expect(store).not.toHaveBeenCalled();
 });
