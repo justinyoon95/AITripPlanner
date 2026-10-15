@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   useForm,
@@ -30,6 +36,7 @@ import { latestEndDate, dateSchema } from "@/features/trips/calendar";
 import {
   destinationSchema,
   MAX_TRAVELERS,
+  type Destination,
 } from "@/features/trips/planning-schema";
 import { DestinationCombobox } from "./destination-combobox";
 import { TravelDetails } from "./travel-details";
@@ -62,12 +69,21 @@ const paceOptions = [
 export function TripForm({
   destination = "",
   mockMode = false,
+  renderDestination,
+  renderHeader,
+  formClassName = "trip-form",
 }: {
   destination?: string;
   mockMode?: boolean;
+  renderDestination?: (destination?: Destination) => ReactNode;
+  renderHeader?: (destination?: Destination) => ReactNode;
+  formClassName?: string;
 }) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Last confirmed selection drives both visuals; unselected typing is not a
+  // new destination. Validation still clears resolvedDestination immediately.
+  const [visualCity, setVisualCity] = useState<Destination | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isNavigating, startNavigation] = useTransition();
   const inFlight = useRef(false);
@@ -129,6 +145,7 @@ export function TripForm({
         }
         values.resolvedDestination = destinationSchema.parse(body.destination);
         setValue("resolvedDestination", values.resolvedDestination);
+        setVisualCity(values.resolvedDestination);
       }
       const inputKey = canonicalJSON(values);
       const itinerary =
@@ -167,12 +184,13 @@ export function TripForm({
 
   return (
     <FormProvider {...form}>
+      {renderHeader?.(visualCity)}
       <form
         onSubmit={(event) => {
           void handleSubmit(submit)(event);
         }}
         noValidate
-        className="trip-form"
+        className={formClassName}
         aria-busy={isSubmitting || isGenerating || isNavigating}
       >
         <div className="form-section">
@@ -180,6 +198,7 @@ export function TripForm({
             <span>01</span>
             <h2>The essentials</h2>
           </div>
+          {renderDestination?.(visualCity)}
           <div className="field">
             <label htmlFor="destination">Where are you headed?</label>
             <Controller
@@ -194,8 +213,10 @@ export function TripForm({
                   onChange={(value) => {
                     field.onChange(value);
                     setValue("resolvedDestination", undefined);
+                    if (!value.trim()) setVisualCity(undefined);
                   }}
                   onSelect={(city) => {
+                    setVisualCity(city);
                     field.onChange(
                       [city.name, city.region, city.country]
                         .filter(Boolean)

@@ -9,24 +9,42 @@ import {
   MapPin,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { DEFAULT_PHOTO_CREDIT } from "@/features/trips/destination-media";
 
 const destinations = [
   {
     name: "Kyoto, Japan",
     label: "Quiet streets. Endless discoveries.",
     image: "photo-1493976040374-85c8e12f0c0e",
+    alt: "Two women in kimono on a street in Kyoto",
+    photographer: "Sorasak",
+    profile: "boontohhgraphy",
+    photo: "two-women-in-purple-and-pink-kimono-standing-on-street-_UIN-pFfJ7c",
     query: "Kyoto, Japan",
   },
   {
     name: "Lisbon, Portugal",
     label: "A slower pace, a sunnier outlook.",
-    image: "photo-1555881400-74d7acaacd8b",
+    image: "photo-1548707309-dcebeab9ea9b",
+    alt: "People gathered at Praca do Comercio in Lisbon",
+    photographer: "Claudio Schwarz",
+    profile: "purzlbaum",
+    photo: "people-gathered-on-street-K3XGEoZgA0s",
+    imageURL:
+      "https://images.unsplash.com/photo-1548707309-dcebeab9ea9b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMTAwODE2fDB8MXxhbGx8fHx8fHx8fHwxNzkyMDk1MjQ3fA&ixlib=rb-4.1.0&q=80&w=1080",
     query: "Lisbon, Portugal",
   },
   {
     name: "The Dolomites, Italy",
     label: "Take the scenic route.",
-    image: "photo-1464822759023-fed622ff2c3b",
+    image: "photo-1579609872305-cd979b49650f",
+    alt: "Tre Cime di Lavaredo in the Dolomites, Italy",
+    photographer: "Willdwind / William Martret",
+    profile: "willdwind",
+    photo:
+      "gray-rocky-mountain-near-green-grass-field-during-daytime-gB6hdqxoqSk",
+    imageURL:
+      "https://images.unsplash.com/photo-1579609872305-cd979b49650f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMTAwODE2fDB8MXxzZWFyY2h8NHx8RG9sb21pdGVzJTIwSXRhbHklMjBsYW5kc2NhcGV8ZW58MXwwfHx8MTc5MjA5NTI3MXww&ixlib=rb-4.1.0&q=80&w=1080",
     query: "Dolomites, Italy",
   },
 ];
@@ -45,6 +63,24 @@ export default function HomePage() {
           sizes="100vw"
         />
         <div className="hero-shade" />
+        <span className="photo-credit">
+          Photo by{" "}
+          <a
+            href={DEFAULT_PHOTO_CREDIT.photographerURL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {DEFAULT_PHOTO_CREDIT.photographer}
+          </a>{" "}
+          on{" "}
+          <a
+            href={DEFAULT_PHOTO_CREDIT.photoURL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Unsplash
+          </a>
+        </span>
         <div className="shell hero-content">
           <span className="eyebrow light">YOUR NEXT CHAPTER STARTS HERE</span>
           <h1>
@@ -123,32 +159,47 @@ export default function HomePage() {
         </div>
         <div className="destination-grid">
           {destinations.map((place) => (
-            <Link
-              key={place.name}
-              href={`/trips/new?destination=${encodeURIComponent(place.query)}`}
-              className="destination-card"
-            >
-              <div className="destination-image">
-                <Image
-                  src={`https://images.unsplash.com/${place.image}?auto=format&fit=crop&w=900&q=80`}
-                  alt={
-                    place.name === "Kyoto, Japan"
-                      ? "Traditional Japanese street and pagoda"
-                      : place.name === "Lisbon, Portugal"
-                        ? "Colorful architecture in Lisbon"
-                        : "Dramatic mountain peaks"
-                  }
-                  fill
-                  unoptimized
-                  sizes="(max-width: 700px) 100vw, 33vw"
-                />
-                <span className="destination-arrow">
-                  <ArrowUpRight size={19} />
-                </span>
-              </div>
-              <h3>{place.name}</h3>
-              <p>{place.label}</p>
-            </Link>
+            <article key={place.name} className="destination-card">
+              <Link
+                href={`/trips/new?destination=${encodeURIComponent(place.query)}`}
+              >
+                <div className="destination-image">
+                  <Image
+                    src={
+                      place.imageURL ??
+                      `https://images.unsplash.com/${place.image}?auto=format&fit=crop&w=900&q=80`
+                    }
+                    alt={place.alt}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 700px) 100vw, 33vw"
+                  />
+                  <span className="destination-arrow">
+                    <ArrowUpRight size={19} />
+                  </span>
+                </div>
+                <h3>{place.name}</h3>
+                <p>{place.label}</p>
+              </Link>
+              <p className="destination-card-credit">
+                Photo by{" "}
+                <a
+                  href={`https://unsplash.com/@${place.profile}?utm_source=tripplannerai&utm_medium=referral`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {place.photographer}
+                </a>{" "}
+                on{" "}
+                <a
+                  href={`https://unsplash.com/photos/${place.photo}?utm_source=tripplannerai&utm_medium=referral`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Unsplash
+                </a>
+              </p>
+            </article>
           ))}
         </div>
       </section>
