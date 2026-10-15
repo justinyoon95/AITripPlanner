@@ -1,0 +1,70 @@
+# Unsplash compliance audit
+
+Audit date: October 13, 2026. Scope: uncommitted Phase 3.7 on `codex/destination-experience`, with an inventory of older application photos. No commits, pushes, merges, production approvals or paid API calls were performed. Original Phase 3.6 stabilization work remains separate.
+
+## Official interpretation
+
+Sources reviewed:
+
+- [API guidelines](https://help.unsplash.com/en/articles/2511245-unsplash-api-guidelines) (the requested `/api-guidelines/unsplash-api-guidelines` URL redirects here).
+- [Download/use guideline](https://help.unsplash.com/en/articles/2511258-guideline-triggering-a-download).
+- [Attribution guideline](https://help.unsplash.com/en/articles/2511315-guideline-attribution).
+- [API documentation](https://unsplash.com/documentation), especially hotlinking, `ixid` preservation and the tracking-only download endpoint.
+
+The official examples include applying an image as a header or background. Our interpretation is that selecting a destination and applying its API-result photo as the hero is a download-like **use**, not merely showing a search result. Track the successful hero application asynchronously. Searches, discarded results, failed images, unrelated rerenders and ordinary background hotlink views are not independent use events. Hotlink view measurement and download/use events are distinct. This implementation is not a search-results gallery or an image-download service.
+
+## Findings and fixes
+
+1. Hotlinking was already correct for API photos: `urls.regular` is returned unchanged and rendered by Next Image with `unoptimized`, including the provider's `ixid`. The route proxies JSON metadata, not image bytes; no local downloads/rehosting or `/_next/image` proxy is involved. Both dynamic attribution URLs include `utm_source=tripplannerai&utm_medium=referral`.
+2. Tracking used only a city ID, then consulted a process-local search cache. Cache loss silently reported success without contacting Unsplash; a newer result for that city could also cause tracking of the wrong photo. Responses now include the real provider photo ID and a bounded, signed 30-minute token over the exact returned `links.download_location`. The token is authenticated server-side using purpose-separated HMAC with the private application access key. It contains no access/secret key. Tracking does not depend on the search cache and never reconstructs/strips the endpoint's query parameters.
+3. Repeated image `onLoad` callbacks could duplicate events. The component now creates one UUID per actual hero application and guards repeated callbacks. Clearing and selecting again creates a new event, rather than deduplicating legitimate uses forever. The server coalesces concurrent/repeated delivery of a photo/event pair in-process for one hour. Failed attempts are retained too, preventing automatic retries of potentially delivered events. Searches cannot invoke this path.
+4. Tracking POSTs require same origin and a strict, at-most-4KiB payload. Signed payloads permit only the official HTTPS API hostname and an exact matching photo-ID download path, with no credentials/port. Tampering, expiry, missing configuration and provider failures are errors, not successful no-ops. Search allowance is reduced to 20/hour within the existing total 40/hour process ceiling to reserve capacity for uses; limits are intentionally conservative.
+5. The Phase 3.7 fallback lacked credits. Its identity was verified from [Luca Bravo's official photo page](https://unsplash.com/photos/wooden-boat-on-lago-di-braies-O453M2Liufs): that page's image link points to `photo-1476514525535-07fb3b4ae5f1`, matching our fallback exactly. The unchanged lake photo now always has visible photographer/profile and Unsplash/photo-page links with referral parameters. A default-photo label remains when a city image is unavailable.
+
+The fallback is a pre-existing fixed editorial image, not a photo supplied by the new API search. It is not newly selected through the API on each render, so blindly inventing a download endpoint or counting every fallback view as an API download would be incorrect. Its mixed static-license/API treatment and the remaining landing-page inventory should be disclosed in the production application rather than claiming every static image has API provenance.
+
+## Checklist after fixes
+
+| Item                                      | Status                                   | Evidence / remaining work                                                                                                                                                                                                                                    |
+| ----------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Original API image hotlinks               | Compliant for the Phase 3.7 API path     | `destination-photos.ts` returns `urls.regular` unchanged; `destination-photo.tsx` uses `unoptimized`; exact URL/`ixid` regressions. Static editorial images are listed separately, not represented as API responses.                                         |
+| Required use/download tracking            | Requiring manual production verification | Technical event path repaired and mocked regressions pass. Verify authenticated calls and usage in the Unsplash application dashboard; in-process idempotency does not span multiple serverless instances.                                                   |
+| Distinct branding                         | Compliant in the application             | TripPlannerAI wordmark and compass icon, not Unsplash branding; see site header and application metadata. Portal icon still belongs to the owner review.                                                                                                     |
+| Accurate name and description             | Requiring manual verification            | Local name/README match travel planning functionality. The registered Unsplash application's name, description and review submission are not accessible from this repository.                                                                                |
+| Every displayed photo has correct credits | Compliant in the inspected application   | Dynamic/fallback planner photos, landing hero and all three destination cards have photographer and Unsplash links with referral parameters. The final attribution review below records verified identities and replacements; no guessed credits were added. |
+
+Suggested truthful dashboard description: “TripPlannerAI helps users plan AI-generated travel itineraries with estimated costs, city imagery and destination maps, and review targeted itinerary edits. It does not offer bookings or verified live availability.” Confirm actual dashboard values and submit evidence screenshots; passing unit tests is not Unsplash approval.
+
+## Production boundaries
+
+No new credentials are required. Keep `UNSPLASH_ACCESS_KEY` server-only, and do not expose any secret key. Tracking tokens authorize only the originally returned bounded endpoint; they are not private API credentials. All instances must share the configured application key for token verification. Key rotation invalidates outstanding tokens safely.
+
+Network failures, provider quotas and signed-token expiry can still prevent delivery. Calls remain asynchronous and do not block the form or remove already loaded photos. There are no automatic retries, because tracking is a non-idempotent external counter. Local POST idempotency is useful but not a guarantee across restarts or concurrent instances. A production shared event ledger/queue and account-wide rate policy need explicit infrastructure approval; no database or unrelated infrastructure was introduced for this audit.
+
+Production submission still requires owner dashboard verification and provider approval. The final review below resolves the legacy-photo attribution blocker and records one successful live dynamic-use delivery; this is not provider production approval or proof of cross-instance delivery guarantees.
+
+## Regression coverage
+
+Tests cover exact hotlink equality, `ixid`, referral parameters, no credential exposure in photo JSON, no tracking during search/cache hits, repeated/concurrent event coalescing, distinct legitimate uses, cache loss and changed city results, tampered/expired tokens, failure without retries, oversized/cross-origin payloads, direct browser image src, fallback credits and failed-image behavior. All Unsplash/OpenAI calls are mocked.
+
+Actual isolated Chrome checks at 1440x900 and 390x844 passed with metadata/images/tracking intercepted: two selected cities generated two search requests and exactly two distinct use events per viewport, with no event for typing, correct fallback credit after clearing, no page exceptions and no overflow. Provider delivery and approval were not tested live.
+
+Final executed verification: `npm test` passed 478 tests across 32 files (12 additions over the prior 466-test Phase 3.7 state). `npm run lint`, `npm run typecheck`, `npm run format:check`, `npm run build` and `git diff --check` passed. One concurrent verification attempt hit five existing 5-second cold geographic-data loading timeouts; the full unchanged suite passed when rerun on its own. No assertions, timeout settings or unrelated geographic code were changed. Credentials remain ignored/server-only, the changed-file key-pattern scan found no suspicious files, and no private configuration was printed or copied.
+
+## Final attribution and live delivery review: October 15, 2026
+
+All three landing cards now have visible, separately clickable photographer/profile and photo/Unsplash links with `utm_source=tripplannerai&utm_medium=referral`. Credits sit outside each destination link, avoiding invalid nested anchors. The unchanged Kyoto CDN identity was confirmed through the official API as Sorasak's `_UIN-pFfJ7c`, located in Kyoto, Japan. The old Lisbon and mountain photos had unverified provenance and were removed, not assigned guessed credits:
+
+| Card      | Verified retained/replacement photo | Official attribution evidence                                                                                                                                                                        |
+| --------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kyoto     | `photo-1493976040374-85c8e12f0c0e`  | [Sorasak](https://unsplash.com/photos/two-women-in-purple-and-pink-kimono-standing-on-street-_UIN-pFfJ7c); official API location is Kyoto, Japan                                                     |
+| Lisbon    | `photo-1548707309-dcebeab9ea9b`     | [Claudio Schwarz](https://unsplash.com/photos/people-gathered-on-street-K3XGEoZgA0s); official API location is Praca do Comercio, Lisbon, Portugal                                                   |
+| Dolomites | `photo-1579609872305-cd979b49650f`  | [Willdwind / William Martret](https://unsplash.com/photos/gray-rocky-mountain-near-green-grass-field-during-daytime-gB6hdqxoqSk); provider caption identifies Tre Cime di Lavaredo, Dolomites, Italy |
+
+The two replacements preserve their exact returned `urls.regular` hotlinks, including `ixid`. Each exact `links.download_location` endpoint was called once when curating that editorial selection; both returned HTTP 200. They are fixed editorial content, not selected anew by every visitor: page rendering does not inflate downloads or make API searches. The retained Kyoto/default images were metadata lookups, not new selections. No image bytes are rehosted.
+
+The London failure was reproduced with canonical GeoNames ID `2643743`, England, GB/United Kingdom. The official search returned HTTP 200, 66 results and remaining development quota, not an empty result or HTTP 429. Relevant captions used `London, UK` while the old filter required literal `United Kingdom`. The service now normalizes accents/case/punctuation, matches country names/ISO codes plus bounded common abbreviations, and requires both city and country evidence. It makes at most one broader city/country landscape search after successful but unsuitable initial results. Generic images and contradictory locations remain rejected. This is a relevance heuristic, not external geographic verification of every photo.
+
+HTTP 429 stops fallback immediately and establishes a process-wide cooldown, honoring bounded `Retry-After` seconds/date or one hour when absent. API errors are `no-store`, browser failure caching is short and finite (30 seconds for transient errors; provider cooldown for 429), and there are no automatic transport retries. Successful no-match responses still have a five-minute negative cache; positive server results last 24 hours. Both queries count against the existing 20-search/40-total hourly process limits.
+
+A final real-browser London selection loaded city imagery attributed to Dixit Dhinakaran: one metadata request returned 200, one successful-use tracking request returned 204, and there were no page exceptions. MapTiler traffic was blocked during this check. Live inspection comprised three searches, three metadata lookups (one unrelated lookup was discarded and never used), two editorial-use events and one dynamic-use event: nine official Unsplash requests total, with no automatic live evaluations or OpenAI calls. The development quota remained available. Dashboard counters, registered application details, production approval, and multi-instance idempotency/rate enforcement still require owner/infrastructure review. No unresolved photo attribution/provenance blocker remains in the inspected UI.

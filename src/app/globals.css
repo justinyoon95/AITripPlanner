@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 :root {
   --background: #fcfcfa;
@@ -330,6 +331,15 @@ svg {
 .destination-card p {
   font-size: 13px;
   margin-top: 5px;
+}
+.destination-card .destination-card-credit {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+.destination-card-credit a {
+  text-decoration: underline;
 }
 .closing-band {
   background: #eaf0e8;
@@ -998,7 +1008,7 @@ fieldset:last-child {
     grid-template-columns: 1fr;
   }
   .planner-aside {
-    display: none;
+    display: block;
   }
   .planner-heading h1 {
     font-size: 36px;
@@ -1023,6 +1033,301 @@ fieldset:last-child {
   }
   .itinerary-heading h1 {
     font-size: 38px;
+  }
+}
+
+.city-photo {
+  opacity: 0;
+  transition: opacity 350ms ease;
+}
+.city-photo.is-visible {
+  opacity: 1;
+}
+.photo-credit {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 8px 12px;
+  color: white;
+  background: #0009;
+  font-size: 11px;
+  z-index: 1;
+}
+.photo-credit a {
+  text-decoration: underline;
+}
+.destination-map-section {
+  padding: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.destination-map-heading {
+  min-width: 0;
+}
+.destination-map-heading h2 {
+  font-size: 16px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.destination-map-heading span,
+.map-status {
+  font-size: 11px;
+  color: var(--muted);
+}
+.destination-map {
+  height: 245px;
+  width: 100%;
+  min-width: 0;
+  border-radius: 4px;
+  background: #c9e2e8;
+}
+.map-status {
+  margin-top: 8px;
+  min-height: 30px;
+}
+.destination-marker {
+  width: 18px;
+  height: 18px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: #be443b;
+  box-shadow: 0 1px 5px #0005;
+}
+
+.planner-page {
+  padding-top: 0;
+}
+.planner-hero {
+  position: relative;
+  isolation: isolate;
+  height: 420px;
+  color: #fff;
+  overflow: hidden;
+}
+.planner-hero .destination-photo--hero {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+.destination-photo--hero img {
+  object-fit: cover;
+  object-position: center 52%;
+}
+.planner-hero-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, #0b1b264d, transparent 45%),
+    linear-gradient(90deg, #081c24e6 0%, #081c24bf 48%, #081c2426 100%);
+}
+.planner-hero-content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding-block: 24px 78px;
+}
+.planner-hero .back-link {
+  color: #fff;
+  margin-bottom: 36px;
+}
+.planner-hero .back-link:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 5px;
+  border-radius: 2px;
+}
+.planner-hero-heading {
+  max-width: 760px;
+}
+.planner-hero-heading .eyebrow {
+  color: #e5efed;
+  margin-bottom: 15px;
+}
+.planner-hero-heading h1 {
+  font-size: 48px;
+  line-height: 1.12;
+  color: #fff;
+}
+.planner-hero-heading p {
+  margin-top: 18px;
+  color: #edf1f3;
+  font-size: 15px;
+}
+.planner-hero .photo-credit {
+  inset: auto max(24px, calc((100% - 1180px) / 2)) 20px auto;
+  max-width: calc(100% - 48px);
+  border-radius: 4px;
+  background: #081c24d9;
+  z-index: 3;
+  overflow-wrap: anywhere;
+}
+.planner-hero .photo-credit a:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
+.planner-form {
+  max-width: 860px;
+  margin-block: 42px 0;
+}
+.planner-form > .form-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.planner-destination-preview {
+  margin-bottom: 30px;
+}
+.planner-destination-preview .destination-map-section {
+  padding: 0;
+  background: #eff5f3;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.planner-destination-preview .destination-map {
+  height: 260px;
+  border-radius: 4px 4px 0 0;
+}
+.destination-map-compact {
+  height: 260px;
+}
+.destination-map-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 0;
+}
+.destination-map-section > .map-status {
+  margin: 4px 14px 8px;
+  min-height: 16px;
+}
+.map-expand,
+.map-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--ink);
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.map-close {
+  width: 44px;
+  padding: 0;
+}
+.map-expand:focus-visible,
+.map-close:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.destination-map-dialog {
+  inset: 0;
+  margin: auto;
+  width: min(1100px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+}
+.destination-map-dialog::backdrop {
+  background: #081c24b3;
+}
+.map-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.map-dialog-header h2 {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.destination-map-expanded,
+.planner-destination-preview .destination-map-dialog .destination-map {
+  height: min(650px, calc(100dvh - 170px));
+  min-height: 120px;
+  border-radius: 4px;
+}
+.destination-map-dialog .map-status {
+  min-height: 16px;
+  margin: 10px 0 0;
+}
+@media (max-width: 700px) {
+  .planner-hero {
+    height: auto;
+    min-height: 390px;
+  }
+  .planner-hero-content {
+    min-height: 390px;
+    padding-block: 24px 98px;
+  }
+  .planner-hero .back-link {
+    margin-bottom: 30px;
+  }
+  .planner-hero-heading h1 {
+    font-size: 36px;
+    max-width: 340px;
+  }
+  .planner-hero-heading p {
+    font-size: 14px;
+    max-width: 320px;
+  }
+  .planner-hero-shade {
+    background:
+      linear-gradient(0deg, #081c2473, transparent 65%),
+      linear-gradient(90deg, #081c24e6, #081c248c);
+  }
+  .planner-hero .photo-credit {
+    inset: auto 20px 16px auto;
+    max-width: calc(100% - 40px);
+    font-size: 10px;
+  }
+  .planner-form {
+    margin-top: 30px;
+  }
+  .planner-destination-preview .destination-map {
+    height: 200px;
+  }
+  .destination-map-compact {
+    height: 200px;
+  }
+}
+@media (max-width: 900px) {
+  .planner-hero-shade {
+    background:
+      linear-gradient(0deg, #081c2473, transparent 65%),
+      linear-gradient(90deg, #081c24e6, #081c248c);
+  }
+  .planner-aside {
+    max-width: 100%;
+  }
+  .aside-photo {
+    aspect-ratio: 1.7;
+  }
+  .destination-map {
+    height: 220px;
+  }
+  .aside-copy {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .city-photo {
+    transition: none;
   }
 }
 @media (max-width: 550px) {

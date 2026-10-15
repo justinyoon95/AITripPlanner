@@ -1,8 +1,10 @@
 # TripPlannerAI
 
-A Next.js trip planner with structured OpenAI generation, targeted conversational editing, deterministic travel-budget answers, and browser-persisted immutable itinerary versions. Phase 3.5 adds conversation-first responses with optional validated proposals/calculations, uncertainty safeguards, and an opt-in evaluation framework. Authentication, databases, and maps are not implemented.
+A Next.js trip planner with structured OpenAI generation, targeted conversational editing, deterministic travel-budget answers, and browser-persisted immutable itinerary versions. Phase 3.5 adds conversation-first responses with optional validated proposals/calculations, uncertainty safeguards, and an opt-in evaluation framework. Authentication and cloud databases are not implemented.
 
 Phase 3.6 adds geographic destination selection, strict creation dates, optional flight/accommodation constraints, whole-party estimates and seasonal preferences. See [planning experience, data sources and limitations](docs/PHASE3_6.md).
+
+Phase 3.7 adds selection-driven destination photography and an interactive destination map. The map has a credential-free offline overview; city streets require a MapTiler browser key, and photography requires an explicitly enabled Unsplash application. See [setup, attribution, cost controls and verification](docs/PHASE3_7.md). These optional services never block trip creation.
 
 ## Run locally
 
