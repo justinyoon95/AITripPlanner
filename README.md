@@ -17,21 +17,6 @@
 
 </div>
 
-<p align="center">
-  <img src="docs/screenshots/phase3-7-desktop-hero.png" width="800" alt="TripPlannerAI desktop planner with cinematic header, destination map, and trip preferences form" />
-</p>
-
-<p align="center"><sub>Actual application UI captured with mocked destination photography and the bundled offline map; not a real AI-generated itinerary.</sub></p>
-
-<details>
-<summary>View the expanded destination map</summary>
-
-![Expanded destination map using the bundled offline geographic overview](docs/screenshots/phase3-7-expanded-map.png)
-
-The map can expand without leaving the form. This screenshot uses the offline overview, not detailed provider tiles.
-
-</details>
-
 ## Overview
 
 A travel planner with personalized AI itineraries, conversational editing, deterministic budget estimates, and browser-local version history.
