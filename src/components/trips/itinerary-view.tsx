@@ -19,6 +19,10 @@ import { formatDate, formatMoney } from "@/features/trips/format";
 import { buttonVariants } from "@/components/ui/button";
 import type { ReactNode } from "react";
 import { travelWindow, windowLabel } from "@/features/trips/travel-planning";
+import {
+  durationConcern,
+  verifiedLocation,
+} from "@/features/trips/activity-locations";
 
 const categoryIcons = {
   Food: Utensils,
@@ -34,11 +38,17 @@ export function ItineraryView({
   editor,
   onEditActivity,
   editDisabled = false,
+  map,
+  selectedActivityId,
+  onLocateActivity,
 }: {
   itinerary: Itinerary;
   editor?: ReactNode;
   onEditActivity?: (dayId: string, activityId: string | null) => void;
   editDisabled?: boolean;
+  map?: ReactNode;
+  selectedActivityId?: string | null;
+  onLocateActivity?: (dayId: string, activityId: string) => void;
 }) {
   const { input, days } = itinerary;
   const cost = summarizeCosts(itinerary);
@@ -96,6 +106,7 @@ export function ItineraryView({
           </ul>
         </div>
       )}
+      {map}
       <div className="itinerary-grid">
         <div className="day-list">
           {days.map((day) => (
@@ -147,7 +158,14 @@ export function ItineraryView({
                 {day.activities.map((activity) => {
                   const Icon = categoryIcons[activity.category];
                   return (
-                    <article className="activity" key={activity.id}>
+                    <article
+                      className="activity"
+                      key={activity.id}
+                      id={`activity-${activity.id}`}
+                      data-map-selected={
+                        selectedActivityId === activity.id ? "true" : undefined
+                      }
+                    >
                       <div className="activity-time">
                         <span>{activity.time}</span>
                         <div className="timeline-dot" />
@@ -159,6 +177,24 @@ export function ItineraryView({
                         </div>
                         <div className="activity-title">
                           <h3>{activity.name}</h3>
+                          {onLocateActivity && (
+                            <button
+                              type="button"
+                              className="icon-button"
+                              title={
+                                verifiedLocation(activity, input)
+                                  ? "Show on map"
+                                  : "Location unresolved"
+                              }
+                              aria-label={`Locate ${activity.name} on Day ${day.number}`}
+                              disabled={!verifiedLocation(activity, input)}
+                              onClick={() =>
+                                onLocateActivity(day.id, activity.id)
+                              }
+                            >
+                              <MapPin size={17} />
+                            </button>
+                          )}
                           {onEditActivity && (
                             <button
                               type="button"
@@ -181,6 +217,11 @@ export function ItineraryView({
                             {activity.durationMinutes >= 60
                               ? `${activity.durationMinutes / 60} hr`
                               : `${activity.durationMinutes} min`}
+                            {activity.durationSource === "user_provided"
+                              ? " · user-provided"
+                              : activity.durationSource === "ai_estimate"
+                                ? " · AI estimate"
+                                : " · source unknown"}
                           </span>
                           <span>
                             {formatMoney(
@@ -190,6 +231,11 @@ export function ItineraryView({
                             estimated
                           </span>
                         </div>
+                        {durationConcern(activity, input) && (
+                          <p className="field-error">
+                            {durationConcern(activity, input)}
+                          </p>
+                        )}
                       </div>
                     </article>
                   );

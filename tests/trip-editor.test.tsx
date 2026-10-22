@@ -8,6 +8,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -25,6 +26,11 @@ import type { EditResponse } from "@/features/trips/edit-schema";
 import { proposeItineraryEdit } from "@/lib/ai/edit-service";
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("@/features/trips/edit-client", () => ({ requestEdit: request }));
+// WebGL behavior has its own marker/component tests; editor tests retain all
+// interaction and persistence assertions without loading a canvas in jsdom.
+vi.mock("@/components/trips/destination-map", () => ({
+  DestinationMap: () => <div>Map preview</div>,
+}));
 beforeEach(() => {
   request.mockReset();
   vi.stubGlobal("crypto", webcrypto);
@@ -252,9 +258,11 @@ it("shows loading and blocks duplicates, then previews without modifying the act
   writeSession(initial);
   render(<TripWorkspace initial={initial} mockMode={true} />);
   await submit();
-  expect(await screen.findByRole("status")).toHaveTextContent(
-    "Considering your request",
-  );
+  expect(
+    await within(
+      screen.getByRole("region", { name: "Itinerary editor" }),
+    ).findByRole("status"),
+  ).toHaveTextContent("Considering your request");
   expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   fireEvent.submit(message().closest("form")!);
   expect(request).toHaveBeenCalledTimes(1);

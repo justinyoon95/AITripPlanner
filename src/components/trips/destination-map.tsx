@@ -14,14 +14,24 @@ import {
   type Destination,
 } from "@/features/trips/planning-schema";
 import { offlineMapStyle } from "@/features/trips/map-style";
+import { coordinatesSchema } from "@/features/trips/location-schema";
+import type { ActivityMarker } from "@/features/trips/map-activities";
 
 const WORLD = { center: [10, 20] as [number, number], zoom: 1.2 };
 export function DestinationMap({
   destination,
   heading,
+  activities,
+  selectedActivityId,
+  onSelectActivity,
+  selectionDetails,
 }: {
   destination?: Destination;
   heading?: string;
+  activities?: readonly ActivityMarker[];
+  selectedActivityId?: string | null;
+  onSelectActivity?: (id: string) => void;
+  selectionDetails?: { name: string; description: string };
 }) {
   const container = useRef<HTMLDivElement>(null);
   const compact = useRef<HTMLDivElement>(null);
@@ -37,6 +47,12 @@ export function DestinationMap({
   const map = useRef<Map | null>(null),
     marker = useRef<Marker | null>(null);
   const latest = useRef(destination);
+  const activityState = useRef({
+    activities,
+    selectedActivityId,
+    onSelectActivity,
+  });
+  const activityPins = useRef<Marker[]>([]);
   const update = useRef<(() => void) | null>(null);
   const [status, setStatus] = useState("Loading map...");
   const restoreCompact = useCallback(() => {
@@ -123,7 +139,14 @@ export function DestinationMap({
   useEffect(() => {
     let disposed = false;
     let resize: ResizeObserver | undefined;
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const media = {
+      get matches() {
+        return (
+          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
+          false
+        );
+      },
+    };
     void import("maplibre-gl")
       .then((lib) => {
         if (disposed || !container.current) return;
@@ -141,10 +164,36 @@ export function DestinationMap({
             ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${encodeURIComponent(key)}`
             : offlineMapStyle,
           ...WORLD,
-          attributionControl: { compact: true },
+          attributionControl: { compact: false },
           cooperativeGestures: true,
         });
         map.current = instance;
+        if (key) {
+          // MapLibre supplies source text attribution, but not the logo required
+          // on MapTiler Free plans. A control moves with the single map canvas.
+          instance.addControl(
+            {
+              onAdd() {
+                const link = document.createElement("a");
+                link.className = "maplibregl-ctrl maptiler-logo";
+                link.href = "https://www.maptiler.com";
+                link.target = "_blank";
+                link.rel = "noreferrer";
+                const image = document.createElement("img");
+                image.src = "https://api.maptiler.com/resources/logo.svg";
+                image.alt = "MapTiler logo";
+                image.width = 100;
+                image.height = 30;
+                link.appendChild(image);
+                return link;
+              },
+              onRemove() {
+                container.current?.querySelector(".maptiler-logo")?.remove();
+              },
+            },
+            "bottom-left",
+          );
+        }
         if (expanded.current) {
           instance.scrollZoom.enable();
           instance.cooperativeGestures.disable();
@@ -153,10 +202,78 @@ export function DestinationMap({
           new lib.NavigationControl({ showCompass: false }),
           "top-right",
         );
+        let previousView = "";
         update.current = () => {
           if (disposed) return;
+          const view = JSON.stringify({
+            destination: latest.current,
+            activities: activityState.current.activities,
+            selected: activityState.current.selectedActivityId,
+          });
+          if (view === previousView) return;
+          previousView = view;
+          const focusedId =
+            document.activeElement?.getAttribute("data-activity-id");
           marker.current?.remove();
           marker.current = null;
+          activityPins.current.forEach((pin) => pin.remove());
+          activityPins.current = [];
+          const points = (activityState.current.activities ?? []).filter(
+            (p) => coordinatesSchema.safeParse(p.coordinates).success,
+          );
+          if (points.length) {
+            for (const [index, point] of points.entries()) {
+              const button = document.createElement("button");
+              button.type = "button";
+              button.setAttribute("data-activity-id", point.id);
+              button.className = "itinerary-map-marker";
+              button.textContent = String(index + 1);
+              button.title = `Day ${point.dayNumber}: ${point.name}`;
+              button.setAttribute(
+                "aria-label",
+                `Show ${point.name} on Day ${point.dayNumber}`,
+              );
+              button.setAttribute(
+                "aria-pressed",
+                String(point.id === activityState.current.selectedActivityId),
+              );
+              button.addEventListener("click", () =>
+                activityState.current.onSelectActivity?.(point.id),
+              );
+              activityPins.current.push(
+                new lib.Marker({ element: button })
+                  .setLngLat([
+                    point.coordinates.longitude,
+                    point.coordinates.latitude,
+                  ])
+                  .addTo(instance),
+              );
+              if (focusedId === point.id) button.focus({ preventScroll: true });
+            }
+            const selected = points.find(
+              (p) => p.id === activityState.current.selectedActivityId,
+            );
+            if (selected || points.length === 1) {
+              const p = selected ?? points[0];
+              instance.flyTo({
+                center: [p.coordinates.longitude, p.coordinates.latitude],
+                zoom: 12,
+                duration: media.matches ? 0 : 900,
+                essential: false,
+              });
+            } else {
+              const lng = points.map((p) => p.coordinates.longitude),
+                lat = points.map((p) => p.coordinates.latitude);
+              instance.fitBounds(
+                [
+                  [Math.min(...lng), Math.min(...lat)],
+                  [Math.max(...lng), Math.max(...lat)],
+                ],
+                { padding: 60, maxZoom: 13, duration: media.matches ? 0 : 900 },
+              );
+            }
+            return;
+          }
           const valid = destinationSchema.safeParse(latest.current);
           if (valid.success) {
             const city = valid.data;
@@ -214,6 +331,8 @@ export function DestinationMap({
       update.current = null;
       marker.current?.remove();
       marker.current = null;
+      activityPins.current.forEach((pin) => pin.remove());
+      activityPins.current = [];
       map.current?.remove();
       map.current = null;
     };
@@ -222,6 +341,14 @@ export function DestinationMap({
     latest.current = destination;
     update.current?.();
   }, [destination]);
+  useEffect(() => {
+    activityState.current = {
+      activities,
+      selectedActivityId,
+      onSelectActivity,
+    };
+    update.current?.();
+  }, [activities, selectedActivityId, onSelectActivity]);
   return (
     <section className="destination-map-section" aria-label="Destination map">
       <div className="destination-map-compact" ref={compact}>
@@ -276,9 +403,17 @@ export function DestinationMap({
           </button>
         </div>
         <div className="destination-map-expanded" ref={expandedHost} />
-        <p className="map-status">
-          {status || (city ? `${city.name}, ${city.country}` : "World map")}
-        </p>
+        <div className="map-dialog-footer">
+          {selectionDetails && (
+            <div className="map-activity-detail">
+              <strong>{selectionDetails.name}</strong>
+              <p>{selectionDetails.description}</p>
+            </div>
+          )}
+          <p className="map-status">
+            {status || (city ? `${city.name}, ${city.country}` : "World map")}
+          </p>
+        </div>
       </dialog>
     </section>
   );

@@ -13,6 +13,11 @@ import {
 } from "./planning-schema";
 import { flightAtDestination, scheduleWithinWindow } from "./travel-planning";
 import { validateAccommodation } from "./hotel-validation";
+import {
+  activityLocationSchema,
+  durationSourceSchema,
+  minimumDurationSchema,
+} from "./location-schema";
 export { dateSchema, tripDayCount, DAY_MS } from "./calendar";
 
 export const MAX_TRIP_DAYS = 14;
@@ -180,6 +185,9 @@ export const activitySchema = z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   durationMinutes: z.number().int().positive().max(720),
   estimatedCost: z.number().finite().nonnegative().max(1_000_000_000),
+  location: activityLocationSchema.optional(),
+  durationSource: durationSourceSchema.optional(),
+  minimumDuration: minimumDurationSchema.optional(),
 });
 export const budgetAssessmentSchema = z.object({
   status: z.enum(["reasonable", "tight", "unrealistic", "uncertain"]),

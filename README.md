@@ -29,6 +29,7 @@ A travel planner with personalized AI itineraries, conversational editing, deter
 - Server-calculated whole-party and per-person estimates, budget comparisons, and highest-cost-day answers.
 - Immutable itinerary versions, undo/restore, and browser-local persistence.
 - City-specific Unsplash photography and an expandable MapLibre destination map, with a default photograph and credential-free offline map fallback.
+- Day-filtered itinerary maps with activity/marker selection, reference-matched location provenance, and explicit unresolved-location indicators.
 
 Built with Next.js App Router, React, TypeScript, Tailwind CSS, React Hook Form, Zod, and the official OpenAI SDK. Authentication and cloud persistence are not implemented.
 
@@ -65,6 +66,8 @@ Optional visual providers use the remaining variables in `.env.example`:
 | `NEXT_PUBLIC_MAPTILER_KEY`   | Browser-visible MapTiler key for detailed maps; restrict allowed domains. Leave blank for the bundled offline overview. |
 
 Register provider applications and review their quotas and billing before enabling them. Unsplash images are hotlinked with photographer attribution and usage tracking. Missing configuration or provider failures do not prevent trip creation. No external credentials are needed for development sample itineraries with the default photograph and offline map.
+
+Configured MapTiler maps retain linked data attribution and the MapTiler logo required on Free plans. Preserve these notices when customizing the map; provider usage remains subject to the account's plan and terms.
 
 ```sh
 npm run dev
@@ -174,6 +177,8 @@ RHF and the backend share one Zod request schema. The provider wire schema exclu
 - Cross-tab writes use Web Locks where supported, plus before/after state checks. Browsers without Web Locks have best-effort conflict detection, not a database transaction. Undo/restore increment the revision even when revisiting identical content, so older proposals cannot become valid again.
 - Overview, day titles, assumptions, and warnings remain the original generation narrative; targeted edits do not automatically rewrite them. Review the current activities and costs. Replacements preserve the planned-entry ID; additions get server UUIDs. Direct date/destination/budget changes, moving an existing activity between days, and whole-day regeneration are not supported chat operations.
 - Hotel policies are not physical appointments. Only supplied planned movements reserve hotel logistics intervals. Legacy ambiguous hotel times are preserved without inventing movements. Airport and hotel buffers are estimates; attraction durations, routes, opening hours, and availability are not externally verified.
+- Activity location matching currently uses a limited bundled CC0 Wikidata catalog covering Osaka Castle, Universal Studios Japan, and Dotonbori. Other or ambiguous names remain unresolved and receive no activity pin; there is no live geocoder. Reference matching does not verify venue operations, entrances, or routes. District pins represent the district, not a specific business.
+- Planned durations retain provenance (AI estimate, user-provided, or unknown). Full-day reference profiles require a conservative six-hour planning allowance, not a verified visit duration; infeasible proposals are rejected without silently removing unrelated activities. Straight-line gaps of at least 5 km prompt review, not a claim about actual travel time or infeasibility.
 - Photographs load from Unsplash; functionality does not require successful image loading.
 
 </details>

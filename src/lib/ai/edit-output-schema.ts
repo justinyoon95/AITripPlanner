@@ -10,14 +10,19 @@ import {
 } from "@/features/trips/edit-schema";
 
 // Provider-generated additions have no identity; normalization assigns UUIDs.
+const providerActivity = activityDraftSchema.omit({
+  location: true,
+  durationSource: true,
+  minimumDuration: true,
+});
 const wireOperation = z.union([
-  editOperationSchema.options[0],
+  editOperationSchema.options[0].extend({ activity: providerActivity }),
   editOperationSchema.options[1],
   editOperationSchema.options[2],
   z.strictObject({
     type: z.literal("add_activity"),
     dayId: z.string().min(1).max(200),
-    activity: activityDraftSchema,
+    activity: providerActivity,
   }),
   editOperationSchema.options[4],
 ]);

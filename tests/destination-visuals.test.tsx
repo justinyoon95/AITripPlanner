@@ -50,7 +50,11 @@ vi.mock("maplibre-gl", () => ({
       if (state.failInitialization) throw new Error("WebGL unavailable");
       state.maps.push(options);
     }
-    addControl() {}
+    addControl(control: { onAdd?: () => HTMLElement }) {
+      const element = control.onAdd?.();
+      if (element)
+        document.querySelector(".destination-map")?.appendChild(element);
+    }
     on(event: string, callback: () => void) {
       state.handlers[event] = callback;
     }
@@ -474,6 +478,37 @@ it("uses city zoom only with the configured tile provider", async () => {
   expect(state.fly).toHaveBeenLastCalledWith(
     expect.objectContaining({ zoom: 11 }),
   );
+});
+it("adds the official linked MapTiler logo and keeps text attribution expanded", async () => {
+  vi.stubEnv("NEXT_PUBLIC_MAPTILER_KEY", "test-public-token");
+  render(<DestinationMap destination={tokyo} />);
+  await waitFor(() => expect(state.maps).toHaveLength(1));
+  const logo = await screen.findByRole("img", { name: "MapTiler logo" });
+  expect(logo).toHaveAttribute(
+    "src",
+    "https://api.maptiler.com/resources/logo.svg",
+  );
+  expect(logo.closest("a")).toHaveAttribute("href", "https://www.maptiler.com");
+  expect(state.maps[0].attributionControl).toEqual({ compact: false });
+  expect(document.querySelectorAll(".maptiler-logo")).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Expand map" }));
+  expect(
+    within(screen.getByRole("dialog")).getByRole("img", {
+      name: "MapTiler logo",
+    }),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Close expanded map" }));
+  expect(document.querySelectorAll(".maptiler-logo")).toHaveLength(1);
+  expect(state.maps).toHaveLength(1);
+  act(() => state.handlers.error());
+  expect(
+    screen.getByRole("img", { name: "MapTiler logo" }),
+  ).toBeInTheDocument();
+});
+it("does not load a provider logo for the credential-free offline map", async () => {
+  render(<DestinationMap destination={tokyo} />);
+  await waitFor(() => expect(state.maps).toHaveLength(1));
+  expect(screen.queryByRole("img", { name: "MapTiler logo" })).toBeNull();
 });
 it("flies using selected geographic coordinates and clears the marker", async () => {
   const view = render(<DestinationMap destination={tokyo} />);
