@@ -20,7 +20,7 @@ import { createOpenAIClient } from "./client";
 import { GenerationError } from "./errors";
 import {
   aiEditOutputSchema,
-  conversationOutputSchema,
+  providerConversationSchema,
 } from "./edit-output-schema";
 import {
   editInput,
@@ -154,8 +154,8 @@ export async function proposeItineraryEdit(
             input: editInput(request),
             text: {
               format: zodTextFormat(
-                conversationOutputSchema,
-                "travel_conversation",
+                providerConversationSchema,
+                "travel_conversation_v38",
               ),
             },
             max_output_tokens: MAX_EDIT_OUTPUT_TOKENS,

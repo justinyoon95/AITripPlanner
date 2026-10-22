@@ -33,8 +33,8 @@ describe("versioned evaluation fixtures and independent graders", () => {
   });
   it("uses reproducible synthetic fixtures with no provider calls", () => {
     expect(fixtureRequest("question")).toEqual(fixtureRequest("question"));
-    expect(DATASET_VERSION).toBe("travel-reliability-v5");
-    expect(evaluationCases).toHaveLength(115);
+    expect(DATASET_VERSION).toBe("travel-reliability-v6");
+    expect(evaluationCases).toHaveLength(125);
     expect(new Set(evaluationCases.map((c) => c.id)).size).toBe(
       evaluationCases.length,
     );
@@ -62,6 +62,7 @@ describe("versioned evaluation fixtures and independent graders", () => {
         "conversational_followup",
         "conversation_first",
         "conversation_integration",
+        "stabilization",
       ]),
     );
   });

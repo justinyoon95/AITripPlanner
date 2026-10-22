@@ -47,6 +47,18 @@ export function mockChat(
   }
   if (/food|meals/i.test(text) && /how much|cost|spend|estimate/i.test(text))
     return question("food_cost");
+  if (/per person|each person|per traveler/i.test(text))
+    return question("per_person_cost");
+  if (/most expensive|highest.*cost/i.test(text))
+    return question("most_expensive_day");
+  if (/remaining|budget.*left|left.*budget/i.test(text))
+    return question("budget_remaining");
+  if (/over budget/i.test(text)) return question("budget_status");
+  if (
+    /one person or|both travelers|cost.*scope/i.test(text) &&
+    !/how much/i.test(text)
+  )
+    return question("cost_scope");
   if (/how much|total|estimated spending|budget summary/i.test(text))
     return question(dayNumber ? "day_cost" : "trip_cost");
   if (/schedule|what.*planned/i.test(text)) return question("schedule");

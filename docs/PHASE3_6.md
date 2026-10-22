@@ -110,3 +110,36 @@ Manual real-API checklist (only after consciously enabling paid `ai` mode):
 8. Reopen an old past-dated trip. It must display without asking for new dates or inventing travel metadata.
 
 Real-model recommendation quality and precise travel feasibility remain manual checks, not guarantees derived from mocked tests. Future work may add verified routing/places/events and configurable per-airport buffers only with approval. No next phase begins automatically.
+
+## Post-PR conversational editing smoke-test fixes
+
+These fixes remain local on the feature branch pending approval; they do not merge or deploy PR #5.
+
+### Findings
+
+- Test B: the development diagnostic recorded `proposal / NO_CHANGE`. `applyEditOperations` compares the canonical candidate with the base and rejects an unchanged itinerary. The original operations were not logged, so their exact contents cannot be reconstructed. The normalizer previously retained the model's optimistic narration even after this rejection, then appended an error. This was a deterministic presentation defect, distinct from the model choosing an ambiguous alternative or generating ineffective operations.
+- Test C: the production contract permits `proposal: null`, and `normalizeConversation` correctly returns an informational answer for that output. No production edit-verb whitelist prevents a valid replacement. The transcript alone does not reveal the raw output; model omission of a proposal is consistent with the observed result, but cannot be proven from retained diagnostics. Do not manufacture an operation from prose or retry the paid call.
+- Test A: `editInput` already supplies stored input, exact activities, chronological outcomes and deterministic `planningWindows`. There is no hardcoded arrival time. The observed 17:40 cannot independently be checked against the user's browser-local record from server logs. An unverified "too late for the castle's hours" assertion is now caught by the factual presentation policy, not treated as evidence about actual hours.
+
+### Changes and safeguards
+
+- Prompt `chat-3.6-v2` explicitly distinguishes agreement to one offer from agreement to multiple alternatives. Ambiguous agreement requires a focused choice, not an arbitrary proposal. Explicit feasible replacements should produce operations even when the attraction is present on another day. This is model guidance, not a deterministic guarantee of conversational understanding.
+- Central output-only action narration filtering in `conversation-facts.ts` removes common completion/promise claims. It does not classify user intent or authorize actions. Valid proposals receive a server-authored review status and deterministic current/proposed totals. Failed proposals discard their entire model narration, preserving independent calculations and the specific validator explanation. No-op errors explain that there is no new change to review, without claiming a particular activity was already scheduled when that is unknown.
+- No model call, retry, token limit, schema, storage key, edit operation, acceptance check or itinerary mutation behavior was added or relaxed. Pending/accepted/rejected/stale outcomes still accompany chronological context. Agreement only requests preparation; acceptance controls remain the sole version-creation path.
+- Empty days remain valid only when `travelWindow.travelOnly` is true. Such days cannot accept sightseeing. A flight day with a usable activity window retains the existing minimum; its additions must fit both the airport window and hotel appointments. These are planning constraints, not verified venue hours.
+
+### Verification and retest
+
+`tests/travel-edit-reliability.test.ts` adds 20 deterministic regressions for presentation, no-ops, independent calculations, explicit replacements, cross-day redundancy, separate ambiguous turns, acceptance, stored arrival/hotel context, valid additions and rejected flight/hotel conflicts. Provider responses are mocked: these tests verify integration and prompt context, not actual model interpretation. Existing generation, whole-party calculations, seasonal input, geography/date validation, stale checks, undo/restore, persistence and legacy tests remain intact.
+
+Manually retest in consciously enabled paid AI mode:
+
+1. Inspect your stored Osaka arrival and hotel times; ask for the April 15 castle visit at 21:00. Verify conflicts are explained without a claim of verified venue hours.
+2. If offered two alternatives, submit `Yes` separately. Expect a focused choice, no saved change. Agreement to a single clear offer may prepare a draft but must not accept it.
+3. Request the April 17 castle replacement explicitly, even with an April 16 visit present. Expect a valid reviewable replacement or an actual constraint, not just hypothetical prose.
+4. Repeat an already scheduled change. Expect a no-op explanation without promises or completion claims.
+5. Ask Day 2 total spending for both travelers; compare the server calculation. Reject a proposal, then accept a new valid one; undo, restore and refresh. Only explicit acceptance should create a version.
+
+Remaining limits: no live hours or route verification, no stored raw model-output replay, and prompt-following remains model-dependent. The narrow output assertion filter is not a semantic proof against every possible paraphrase. No paid evaluations were run; real-API resolution remains subject to this manual retest.
+
+Final executed checks for these local fixes: `npm test` passed 453 tests across 30 files; `npm run lint`, `npm run typecheck`, `npm run format:check`, `npm run build` and `git diff --check` passed. Isolated mock-mode Chrome checks passed at 1440x1000 and 390x844 for creation, travel metadata, proposal reject/accept, undo/restore, refresh, layout overflow and page exceptions. Environment files remain ignored/untracked; the seven changed/untracked files contained no credential patterns. No commits, pushes or deployments were performed. GitHub inspection found PR #5 already merged at 2026-10-11T02:11:03Z, contrary to the stated open-PR baseline; this session did not merge it or modify its state.

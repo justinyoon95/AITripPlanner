@@ -1,5 +1,9 @@
 # TripPlannerAI architecture
 
+## Phase 3.8 reliability extension
+
+See [Phase 3.8](PHASE3_8.md) for the current hotel policy versus explicit movement contract, required structured provider action decision, legacy browser/storage adapter and authoritative whole-party cost answers. This supersedes older hotel-appointment/provider-contract descriptions below while preserving the Phase 3.7 photo/map integrations and existing deterministic acceptance/version safeguards.
+
 ## Phase 3.6 extension
 
 See [planning contracts and scheduling policy](PHASE3_6.md) for the current creation-only date/geographic validation, optional flight/accommodation metadata, whole-party estimate scope, seasonal context and compatibility guarantees. Shared stored-record parsing remains independent of today's date; creation goes through `newTripSchema` and server-only trusted reference resolution before OpenAI. Autocomplete and IATA endpoints read bundled reference data. Travel windows are enforced in generation and the deterministic edit engine, including constrained logistics-only days. The historical phase descriptions below retain the evolution of the original architecture; Phase 3.6 overrides their ordinary-day count and one-traveler assumptions only where explicitly documented.
