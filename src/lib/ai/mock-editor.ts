@@ -1,5 +1,6 @@
 import type { EditRequest } from "@/features/trips/edit-schema";
 import type { AIEditOutput } from "./edit-output-schema";
+import { placeCatalog } from "@/features/trips/place-catalog";
 
 // Intentionally limited, deterministic sample behavior; never impersonates real AI.
 export function mockEdit(request: EditRequest): AIEditOutput {
@@ -49,6 +50,37 @@ export function mockEdit(request: EditRequest): AIEditOutput {
       ],
     };
   }
+  const reference = placeCatalog.find(
+    (place) =>
+      place.cityId === request.itinerary.input.resolvedDestination?.id &&
+      request.message
+        .toLocaleLowerCase("en")
+        .includes(place.name.toLocaleLowerCase("en")),
+  );
+  // Explicit, limited sample behavior for exercising the location pipeline.
+  // This is not interpretation/authorization in the production AI path.
+  if (reference && /replace/i.test(request.message))
+    return {
+      kind: "proposal",
+      message:
+        "Sample replacement for review. Location is matched independently; visit details remain unverified.",
+      operations: [
+        {
+          type: "replace_activity",
+          dayId: day.id,
+          activityId: activity.id,
+          activity: {
+            name: reference.name,
+            description:
+              "Illustrative visit; verify current visitor details before traveling.",
+            category: reference.kind === "district" ? "Shopping" : "Culture",
+            time: activity.time,
+            durationMinutes: activity.durationMinutes,
+            estimatedCost: activity.estimatedCost,
+          },
+        },
+      ],
+    };
   if (/cheaper|shopping/i.test(request.message)) {
     const draft = {
       name: activity.name,

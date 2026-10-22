@@ -1325,6 +1325,114 @@ fieldset:last-child {
     display: none;
   }
 }
+.itinerary-location-panel {
+  margin: 24px 0 40px;
+  scroll-margin-top: 24px;
+  min-width: 0;
+}
+.itinerary-location-panel .destination-map-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  height: min(820px, calc(100dvh - 32px));
+}
+.itinerary-location-panel .destination-map-expanded {
+  position: relative;
+  flex: 1;
+  min-height: 120px;
+  height: auto;
+}
+.itinerary-location-panel .destination-map-expanded .destination-map {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+.itinerary-location-panel .destination-map-compact .destination-map {
+  height: 100%;
+}
+.itinerary-map-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.itinerary-map-controls h2 {
+  flex: 1;
+  font-size: 18px;
+  min-width: 0;
+  margin: 0;
+}
+.itinerary-map-controls select {
+  width: auto;
+  flex: 0 0 auto;
+  min-width: 100px;
+  max-width: 140px;
+  padding: 8px;
+  border: 1px solid #c9d4cc;
+  border-radius: 4px;
+  background: white;
+}
+.itinerary-map-controls label {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+}
+.maptiler-logo {
+  background: #fff;
+  border-radius: 3px;
+}
+.maptiler-logo img {
+  display: block;
+  object-fit: contain;
+}
+.maptiler-logo:focus-visible {
+  outline: 2px solid #155e3f;
+  outline-offset: 2px;
+}
+.itinerary-map-marker {
+  width: 32px;
+  height: 32px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #2c604d;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 4px #0005;
+}
+.itinerary-map-marker[aria-pressed="true"] {
+  background: #a84b34;
+}
+.itinerary-map-marker:focus-visible {
+  outline: 3px solid #a84b34;
+  outline-offset: 3px;
+}
+.activity[data-map-selected="true"] {
+  outline: 2px solid #2c604d;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.map-activity-detail {
+  border-left: 3px solid #2c604d;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 14px;
+}
+.map-activity-detail p {
+  margin: 6px 0;
+}
+.map-dialog-footer {
+  max-height: 24vh;
+  overflow-y: auto;
+}
+.map-activity-detail a {
+  text-decoration: underline;
+}
+.unresolved-locations {
+  margin: 12px 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #58645d;
+}
 @media (prefers-reduced-motion: reduce) {
   .city-photo {
     transition: none;

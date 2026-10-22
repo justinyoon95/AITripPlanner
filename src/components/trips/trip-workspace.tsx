@@ -6,6 +6,8 @@ import { useTripEditor } from "@/features/trips/use-trip-editor";
 import type { TripSession } from "@/features/trips/session-schema";
 import { ItineraryView } from "./itinerary-view";
 import { TripChat } from "./trip-chat";
+import { useCallback, useState } from "react";
+import { ItineraryMap } from "./itinerary-map";
 
 export function TripWorkspace({
   initial,
@@ -18,6 +20,26 @@ export function TripWorkspace({
 }) {
   const editor = useTripEditor(initial, initialWarning);
   const version = activeVersion(editor.session);
+  const [mapDay, setMapDay] = useState(version.itinerary.days[0].id);
+  const [selected, setSelected] = useState<string | null>(null);
+  const selectedActivity = version.itinerary.days
+    .flatMap((d) => d.activities)
+    .some((a) => a.id === selected)
+    ? selected
+    : null;
+  const selectFromMap = useCallback(
+    (id: string) => {
+      setSelected(id);
+      if (document.querySelector("dialog[open]")) return;
+      document.getElementById(`activity-${id}`)?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+        block: "center",
+      });
+    },
+    [setSelected],
+  );
   return (
     <>
       <div className="workspace-toolbar">
@@ -39,6 +61,30 @@ export function TripWorkspace({
       </div>
       <ItineraryView
         itinerary={version.itinerary}
+        selectedActivityId={selectedActivity}
+        map={
+          <ItineraryMap
+            itinerary={version.itinerary}
+            dayId={mapDay}
+            selectedActivityId={selectedActivity}
+            onDayChange={(id) => {
+              setMapDay(id);
+              setSelected(null);
+            }}
+            onSelectActivity={selectFromMap}
+          />
+        }
+        onLocateActivity={(dayId, id) => {
+          setMapDay(dayId);
+          setSelected(id);
+          document.getElementById("itinerary-map")?.scrollIntoView({
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+              .matches
+              ? "instant"
+              : "smooth",
+            block: "start",
+          });
+        }}
         editor={<TripChat editor={editor} mockMode={mockMode} />}
         onEditActivity={(dayId, activityId) => {
           if (!editor.busy && !editor.session.pendingProposal) {

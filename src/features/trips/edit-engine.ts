@@ -9,6 +9,11 @@ import {
 } from "./edit-schema";
 import type { Itinerary } from "./types";
 import { travelWindow, scheduleWithinWindow } from "./travel-planning";
+import {
+  durationConcern,
+  locateActivity,
+  resolveActivityLocation,
+} from "./activity-locations";
 
 export function applyEditOperations(
   base: Itinerary,
@@ -34,6 +39,20 @@ export function applyEditOperations(
     ]),
   ]);
   for (const operation of operations) {
+    if (
+      operation.type === "add_activity" ||
+      operation.type === "replace_activity"
+    ) {
+      const concern = durationConcern(operation.activity, result.input);
+      if (concern) throw new EditError("DURATION_UNCERTAIN", concern);
+      if (operation.activity.location || operation.activity.minimumDuration) {
+        const located = locateActivity(operation.activity, result.input);
+        operation.activity.location = located.location;
+        delete operation.activity.minimumDuration;
+        if (located.minimumDuration)
+          operation.activity.minimumDuration = located.minimumDuration;
+      }
+    }
     const day = result.days.find((item) => item.id === operation.dayId);
     if (!day)
       throw new EditError(
@@ -102,12 +121,26 @@ export function applyEditOperations(
           id: operation.activityId,
           estimatedCost: roundMoney(operation.activity.estimatedCost),
         };
-      else
+      else {
+        const previous = day.activities[index];
+        const concern = durationConcern(
+          {
+            ...day.activities[index],
+            durationMinutes: operation.durationMinutes,
+          },
+          result.input,
+        );
+        if (concern) throw new EditError("DURATION_UNCERTAIN", concern);
         day.activities[index] = {
           ...day.activities[index],
           time: operation.time,
           durationMinutes: operation.durationMinutes,
+          ...(day.activities[index].durationSource &&
+          operation.durationMinutes !== previous.durationMinutes
+            ? { durationSource: "ai_estimate" as const }
+            : {}),
         };
+      }
     }
   }
   for (const day of result.days.filter((item) => affectedDays.has(item.id))) {
@@ -132,6 +165,15 @@ export function applyEditOperations(
         "DUPLICATE_ACTIVITY",
         `Day ${day.number} would contain duplicate activity names. Please choose a different activity.`,
       );
+    const matchedPlaces = day.activities.flatMap((activity) => {
+      const location = resolveActivityLocation(activity.name, result.input);
+      return location.status === "resolved" ? [location.placeId] : [];
+    });
+    if (new Set(matchedPlaces).size !== matchedPlaces.length)
+      throw new EditError(
+        "DUPLICATE_ACTIVITY",
+        `Day ${day.number} would visit the same reference-matched place more than once under different names. Choose a different activity.`,
+      );
     day.activities.sort((a, b) => a.time.localeCompare(b.time));
     if (!scheduleWithinWindow(result.input, day.date, day.activities))
       throw new EditError(
@@ -139,7 +181,29 @@ export function applyEditOperations(
         `Day ${day.number} conflicts with the arrival, departure, or planned accommodation window. Request a time outside those logistics; travel-only days cannot contain activities.`,
       );
   }
-  if (canonicalJSON(result) === canonicalJSON(original))
+  const plannedContent = (trip: Itinerary) => ({
+    ...trip,
+    days: trip.days.map((day) => ({
+      ...day,
+      activities: day.activities.map((activity) => {
+        const {
+          location: _location,
+          durationSource: _durationSource,
+          minimumDuration: _minimumDuration,
+          ...planned
+        } = activity;
+        void _location;
+        void _durationSource;
+        void _minimumDuration;
+        return planned;
+      }),
+    })),
+  });
+  // Evidence enrichment alone is not an itinerary edit or permission to save.
+  if (
+    canonicalJSON(plannedContent(result)) ===
+    canonicalJSON(plannedContent(original))
+  )
     throw new EditError(
       "NO_CHANGE",
       "The proposal does not change the itinerary. Please describe a different change.",

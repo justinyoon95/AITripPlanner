@@ -33,6 +33,7 @@ import { mockConversation } from "./mock-conversation";
 import { observeResponse, type AIObserver } from "./telemetry";
 import { conversationDiagnostic } from "./conversation-diagnostics";
 import { validateStoredGeography } from "@/lib/validate-trip";
+import { locateActivity } from "@/features/trips/activity-locations";
 
 export const MAX_EDIT_OUTPUT_TOKENS = 4000;
 export function validateEditScope(request: EditRequest) {
@@ -77,10 +78,16 @@ export async function normalizeEditResponse(
   }
   const operations = editOperationsSchema.parse(
     wire.operations.map((operation) =>
-      operation.type === "add_activity"
+      operation.type === "add_activity" || operation.type === "replace_activity"
         ? {
             ...operation,
-            activity: { ...operation.activity, id: randomUUID() },
+            activity: {
+              ...locateActivity(operation.activity, request.itinerary.input),
+              durationSource: source === "ai" ? "ai_estimate" : "unknown",
+              ...(operation.type === "add_activity"
+                ? { id: randomUUID() }
+                : {}),
+            },
           }
         : operation,
     ),

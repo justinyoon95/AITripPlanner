@@ -24,6 +24,10 @@ import { assertSupportedClaims } from "./claim-policy";
 import { observeResponse, type AIObserver } from "./telemetry";
 import { requestBoundary } from "./chat-policy";
 import { validateNewTrip } from "@/lib/validate-trip";
+import {
+  locateActivity,
+  durationConcern,
+} from "@/features/trips/activity-locations";
 
 export function normalizeAIItinerary(
   raw: unknown,
@@ -37,6 +41,12 @@ export function normalizeAIItinerary(
     );
   validateGeneratedSchedule(parsed.data, input);
   assertSupportedClaims(parsed.data);
+  for (const day of parsed.data.days)
+    for (const activity of day.activities) {
+      const concern = durationConcern(activity, input);
+      if (concern)
+        throw new GenerationError("DURATION_UNCERTAIN", concern, 422);
+    }
   const result = itinerarySchema.safeParse({
     ...parsed.data,
     id: randomUUID(),
@@ -53,7 +63,8 @@ export function normalizeAIItinerary(
         ]),
       ),
       activities: day.activities.map((activity) => ({
-        ...activity,
+        ...locateActivity(activity, input),
+        durationSource: "ai_estimate",
         id: randomUUID(),
         estimatedCost: roundMoney(activity.estimatedCost),
       })),
@@ -102,7 +113,8 @@ export async function generateItinerary(
         ...day,
         id: randomUUID(),
         activities: day.activities.map((activity) => ({
-          ...activity,
+          ...locateActivity(activity, input),
+          durationSource: "unknown",
           id: randomUUID(),
         })),
       })),
