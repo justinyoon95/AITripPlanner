@@ -55,6 +55,13 @@ export const accommodationSchema = z.strictObject({
   checkInTime: timeSchema.optional(),
   checkOutDate: dateSchema.optional(),
   checkOutTime: timeSchema.optional(),
+  // Legacy time fields above remain unclassified; never infer a movement from them.
+  checkInAvailableFrom: timeSchema.optional(),
+  checkOutBy: timeSchema.optional(),
+  plannedHotelArrivalDate: dateSchema.optional(),
+  plannedHotelArrivalTime: timeSchema.optional(),
+  plannedHotelDepartureDate: dateSchema.optional(),
+  plannedHotelDepartureTime: timeSchema.optional(),
 });
 export const travelSchema = z.strictObject({
   arrival: flightSchema.optional(),

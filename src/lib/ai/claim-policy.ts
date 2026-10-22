@@ -9,6 +9,7 @@ const assertions = [
   /\b(?:is|are)\s+(?:fully\s+)?wheelchair accessible\b/i,
   /\b(?:is|are)\s+open\s+(?:today|tonight|now|daily|from|until|\d)/i,
   /\b(?:expected|likely|scheduled)\s+to\s+be\s+open\b/i,
+  /\btoo late for\b[^.!?\n]{0,70}\b(?:hours|closing)\b/i,
   /\b(?:closes?|opens?)\s+(?:at|by|around|daily at)\s*(?:\d|noon|midnight)/i,
   /\b(?:photography|photos?|food|drinks?|bags?)\s+(?:is|are)\s+(?:not\s+)?(?:allowed|permitted|prohibited|banned)\b/i,
   /\b(?:tickets?|tables?|reservations?)\s+(?:is|are)\s+(?:available|guaranteed)\b/i,

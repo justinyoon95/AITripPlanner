@@ -3,7 +3,10 @@ import { EditError } from "@/features/trips/edit-schema";
 import { answerTravelQuestion } from "@/features/trips/travel-questions";
 import { formatMoney } from "@/features/trips/format";
 import { summarizeCosts, summarizeDayCosts } from "@/features/trips/costs";
-import { conversationOutputSchema } from "./edit-output-schema";
+import {
+  conversationOutputSchema,
+  adaptConversationOutput,
+} from "./edit-output-schema";
 import { GenerationError } from "./errors";
 import { assertSupportedClaims } from "./claim-policy";
 import { securityBoundary } from "./chat-policy";
@@ -12,7 +15,11 @@ import {
   questionSchema,
   type TravelQuestion,
 } from "@/features/trips/chat-contract";
-import { safeConversationMessage } from "./conversation-facts";
+import {
+  safeConversationMessage,
+  safeActionMessage,
+  calculationCommentary,
+} from "./conversation-facts";
 import { conversationDiagnostic } from "./conversation-diagnostics";
 
 const envelopeSchema = conversationOutputSchema.extend({
@@ -49,6 +56,8 @@ export async function normalizeConversation(
 ): Promise<EditResponse> {
   const blocked = securityBoundary(request);
   if (blocked) return blocked;
+  const actionControlled = !!raw && typeof raw === "object" && "action" in raw;
+  raw = adaptConversationOutput(raw);
   const parsed = envelopeSchema.safeParse(raw);
   if (
     !parsed.success ||
@@ -79,7 +88,10 @@ export async function normalizeConversation(
       "The response contained incompatible actions. Your itinerary is unchanged.",
     );
   }
-  const message = safeConversationMessage(output.message);
+  let message = safeActionMessage(
+    safeConversationMessage(output.message),
+    output.proposal !== null,
+  );
   if (output.boundary)
     return {
       kind: "refusal",
@@ -126,10 +138,15 @@ export async function normalizeConversation(
       parts.push(`Calculation unavailable: ${error.message}`);
     }
   }
-  if (calculation)
+  if (calculation) {
+    message = safeActionMessage(
+      safeConversationMessage(calculationCommentary(output.message)),
+      output.proposal !== null,
+    );
     parts.push(
       `Current itinerary${hypothetical ? " - hypothetical spending only" : ""}: ${calculation.message}`,
     );
+  }
   if (output.proposal === null) {
     if (output.presentation === "clarification" && !calculation)
       return {
@@ -181,11 +198,17 @@ export async function normalizeConversation(
       );
     }
     parts.push(
+      "I've prepared a proposed change for your review.",
       `Proposed itinerary estimate: ${money(candidate)} (current: ${money(current)}). Nothing changes until you accept.`,
     );
     return {
       ...result,
-      message: compose(message, parts),
+      message: compose(
+        actionControlled
+          ? `Proposed changes: ${result.proposal.summary}`
+          : message,
+        parts,
+      ),
       intent: "itinerary_edit",
       evidence: proposal.data.operations.some((op) =>
         ["add_activity", "replace_activity"].includes(op.type),
@@ -198,9 +221,11 @@ export async function normalizeConversation(
       throw error;
     conversationDiagnostic("proposal", error.code);
     const explanation =
-      error.code === "UNSUPPORTED_CLAIM"
-        ? "The proposed activity included details I can't verify. No proposal was prepared; check official venue information or request a different suggestion."
-        : error.message;
+      error.code === "NO_CHANGE"
+        ? "The proposed operations match the current itinerary, so there is no new change to review."
+        : error.code === "UNSUPPORTED_CLAIM"
+          ? "The proposed activity included details I can't verify. No proposal was prepared; check official venue information or request a different suggestion."
+          : error.message;
     parts.push(
       `Proposal unavailable: ${explanation} Your itinerary is unchanged.`,
     );
@@ -209,13 +234,13 @@ export async function normalizeConversation(
         kind: "answer",
         intent: "travel_question",
         evidence: calculation.evidence,
-        message: compose(message, parts),
+        message: compose("", parts),
       };
     return {
       kind: "clarification",
       intent: "clarification_needed",
       evidence: "none",
-      message: compose(message, parts),
+      message: compose("", parts),
     };
   }
 }

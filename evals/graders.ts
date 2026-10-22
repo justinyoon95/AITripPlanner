@@ -9,6 +9,7 @@ import {
   aiEditOutputSchema,
   conversationOutputSchema,
   observationForLegacyMetrics,
+  adaptConversationOutput,
 } from "@/lib/ai/edit-output-schema";
 import type { EvalCase } from "./fixtures";
 import {
@@ -30,7 +31,9 @@ const check = (name: string, passed: boolean | null, detail = "") => ({
   detail,
 });
 export const coreGrader: Grader = (fixture, result) => {
-  const conversation = conversationOutputSchema.safeParse(result.rawOutput);
+  const conversation = conversationOutputSchema.safeParse(
+    adaptConversationOutput(result.rawOutput),
+  );
   const raw = aiChatOutputSchema.safeParse(
     observationForLegacyMetrics(result.rawOutput),
   );

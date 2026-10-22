@@ -77,9 +77,13 @@ function trip() {
           name: "Example hotel",
           location: "Central Osaka",
           checkInDate: "2027-04-15",
-          checkInTime: "20:00",
+          checkInAvailableFrom: "15:00",
+          plannedHotelArrivalDate: "2027-04-15",
+          plannedHotelArrivalTime: "20:00",
           checkOutDate: "2027-04-20",
-          checkOutTime: "07:30",
+          checkOutBy: "11:00",
+          plannedHotelDepartureDate: "2027-04-20",
+          plannedHotelDepartureTime: "07:30",
         },
       },
     },
@@ -290,10 +294,10 @@ it.each([
 it("requires valid airport references and checks check-in/out flight conflicts", () => {
   expect(() => resolveAirport("QZZ")).toThrow();
   const value = trip();
-  value.travel!.accommodation!.checkInTime = "17:00";
+  value.travel!.accommodation!.plannedHotelArrivalTime = "17:00";
   expect(() => validateNewTrip(value, now)).toThrow();
-  value.travel!.accommodation!.checkInTime = "20:00";
-  value.travel!.accommodation!.checkOutTime = "09:00";
+  value.travel!.accommodation!.plannedHotelArrivalTime = "20:00";
+  value.travel!.accommodation!.plannedHotelDepartureTime = "09:00";
   expect(() => validateNewTrip(value, now)).toThrow();
 });
 it("rejects activity conflicts with flights and planned hotel appointments", () => {

@@ -12,6 +12,7 @@ import {
   MAX_TRAVELERS,
 } from "./planning-schema";
 import { flightAtDestination, scheduleWithinWindow } from "./travel-planning";
+import { validateAccommodation } from "./hotel-validation";
 export { dateSchema, tripDayCount, DAY_MS } from "./calendar";
 
 export const MAX_TRIP_DAYS = 14;
@@ -152,66 +153,7 @@ export const tripInputSchema = z
         /* Field-specific timezone errors are reported above. */
       }
     }
-    const hotel = input.travel?.accommodation;
-    if (hotel) {
-      for (const [dateKey, timeKey] of [
-        ["checkInDate", "checkInTime"],
-        ["checkOutDate", "checkOutTime"],
-      ] as const) {
-        if (hotel[timeKey] && !hotel[dateKey])
-          issue(
-            ["travel", "accommodation", timeKey],
-            "Provide the accommodation date with its time.",
-          );
-        if (
-          hotel[dateKey] &&
-          (hotel[dateKey]! < input.startDate || hotel[dateKey]! > input.endDate)
-        )
-          issue(
-            ["travel", "accommodation", dateKey],
-            "Accommodation dates must fall within travel dates.",
-          );
-      }
-      if (
-        hotel.checkInDate &&
-        hotel.checkOutDate &&
-        (hotel.checkOutDate < hotel.checkInDate ||
-          (hotel.checkInDate === hotel.checkOutDate &&
-            hotel.checkInTime &&
-            hotel.checkOutTime &&
-            hotel.checkOutTime <= hotel.checkInTime))
-      )
-        issue(
-          ["travel", "accommodation", "checkOutDate"],
-          "Check-out must follow check-in.",
-        );
-      try {
-        const a = flightAtDestination(input, "arrival", 180),
-          d = flightAtDestination(input, "departure", -180);
-        if (
-          hotel.checkInDate &&
-          hotel.checkInTime &&
-          a &&
-          `${hotel.checkInDate}T${hotel.checkInTime}` < `${a.date}T${a.time}`
-        )
-          issue(
-            ["travel", "accommodation", "checkInTime"],
-            "Planned check-in must allow arrival procedures and transfer time.",
-          );
-        if (
-          hotel.checkOutDate &&
-          hotel.checkOutTime &&
-          d &&
-          `${hotel.checkOutDate}T${hotel.checkOutTime}` > `${d.date}T${d.time}`
-        )
-          issue(
-            ["travel", "accommodation", "checkOutTime"],
-            "Plan check-out before the airport departure buffer begins.",
-          );
-      } catch {
-        /* Flight fields report invalid local times. */
-      }
-    }
+    validateAccommodation(input, issue);
   });
 
 // Creation-only policy. Never use a moving 'today' bound to parse stored snapshots.

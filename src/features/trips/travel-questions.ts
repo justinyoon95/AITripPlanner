@@ -27,6 +27,20 @@ export function answerTravelQuestion(trip: Itinerary, raw: TravelQuestion) {
     );
   const money = (n: number) => formatMoney(n, trip.input.currency);
   const total = summarizeCosts(trip).total;
+  if (
+    !Number.isFinite(total) ||
+    trip.days.some((d) => !Number.isFinite(summarizeDayCosts(d).total))
+  )
+    throw new EditError(
+      "COST_UNAVAILABLE",
+      "The current itinerary does not contain valid cost estimates for this calculation.",
+    );
+  const travelers = trip.input.travelers ?? 1;
+  const party =
+    travelers === 1 ? "one traveler" : `all ${travelers} travelers together`;
+  const partial = trip.days.some((d) => !d.additionalCosts)
+    ? " Older samples may omit accommodation, transport or meal costs; these are recorded estimates, not a complete bill."
+    : "";
   let message: string;
   if (query.type === "budget_delta") {
     if (query.amount === null || query.currency === null)
@@ -57,9 +71,29 @@ export function answerTravelQuestion(trip: Itinerary, raw: TravelQuestion) {
         "CLARIFY_DAY",
         "Which day would you like a spending estimate for?",
       );
-    message = `Day ${day.number}'s estimated cost is ${money(summarizeDayCosts(day).total)}. Trip total: ${money(total)}; budget: ${money(trip.input.budget)}. These are destination estimates, not verified prices.`;
+    message = `Day ${day.number}'s estimated cost is ${money(summarizeDayCosts(day).total)} in total for ${party}. Trip total: ${money(total)}; budget: ${money(trip.input.budget)}. These are destination estimates, not verified prices.`;
   } else if (query.type === "trip_cost") {
-    message = `Your estimated destination total is ${money(total)}, against a ${money(trip.input.budget)} budget. ${total > trip.input.budget ? `Estimated overrun: ${money(roundMoney(total - trip.input.budget))}.` : `Estimated remaining budget: ${money(roundMoney(trip.input.budget - total))}.`} Travel to/from the destination is excluded; prices are not verified.`;
+    message = `Your estimated destination total is ${money(total)} for ${party}, against a ${money(trip.input.budget)} budget. ${total > trip.input.budget ? `Estimated overrun: ${money(roundMoney(total - trip.input.budget))}.` : `Estimated remaining budget: ${money(roundMoney(trip.input.budget - total))}.`} Travel to/from the destination is excluded; prices are not verified.`;
+  } else if (query.type === "per_person_cost") {
+    const cost = day ? summarizeDayCosts(day).total : total;
+    message = `${day ? `Day ${day.number}` : "This trip"} is estimated at ${money(cost)} for ${party}, or ${money(roundMoney(cost / travelers))} per person if shared equally. This allocation is an estimate, not an itemized individual bill.`;
+  } else if (
+    query.type === "budget_remaining" ||
+    query.type === "budget_status"
+  ) {
+    const remaining = roundMoney(trip.input.budget - total);
+    message = `${remaining < 0 ? `You are over the whole-party budget by ${money(-remaining)}` : `You have ${money(remaining)} remaining in your whole-party budget`}. Estimated spending: ${money(total)} for ${party}; budget: ${money(trip.input.budget)}. Prices are not verified.`;
+  } else if (query.type === "most_expensive_day") {
+    const maximum = Math.max(
+      ...trip.days.map((d) => summarizeDayCosts(d).total),
+    );
+    const days = trip.days
+      .filter((d) => summarizeDayCosts(d).total === maximum)
+      .map((d) => `Day ${d.number}`)
+      .join(", ");
+    message = `${days}${days.includes(",") ? " tie for the highest daily estimate" : " has the highest daily estimate"}: ${money(maximum)} for ${party}. Prices are not verified.`;
+  } else if (query.type === "cost_scope") {
+    message = `Recorded costs${day ? ` for Day ${day.number}` : " for this trip"} cover ${party}, not an additional charge for each person. The estimate is ${money(day ? summarizeDayCosts(day).total : total)}.`;
   } else if (query.type === "preferences") {
     message = `Your recorded pace is ${trip.input.pace}, with interests in ${trip.input.interests.join(", ")}. Additional preferences: ${trip.input.preferences || "none recorded"}. These are your supplied preferences, not verified suitability assurances.`;
   } else {
@@ -71,7 +105,10 @@ export function answerTravelQuestion(trip: Itinerary, raw: TravelQuestion) {
     message = `Day ${day.number}: ${day.activities.map((a) => `${a.time} ${a.name} (${a.durationMinutes} min)`).join("; ")}. These are planned times, not confirmed opening hours or route times.`;
   }
   return {
-    message: message.slice(0, 1000),
+    message: (
+      message +
+      (!["preferences", "schedule"].includes(query.type) ? partial : "")
+    ).slice(0, 1000),
     evidence:
       query.type === "preferences" || query.type === "schedule"
         ? ("itinerary_data" as const)

@@ -161,8 +161,8 @@ export function TravelDetails() {
             10,
           )}
           {field(
-            "travel.accommodation.checkInTime",
-            "Check-in time",
+            "travel.accommodation.checkInAvailableFrom",
+            "Check-in available from",
             "time",
             5,
           )}
@@ -175,17 +175,46 @@ export function TravelDetails() {
             10,
           )}
           {field(
-            "travel.accommodation.checkOutTime",
-            "Check-out time",
+            "travel.accommodation.checkOutBy",
+            "Checkout required by",
+            "time",
+            5,
+          )}
+        </div>
+        <div className="field-row">
+          {field(
+            "travel.accommodation.plannedHotelArrivalDate",
+            "Planned hotel arrival date (optional)",
+            "date",
+            10,
+          )}
+          {field(
+            "travel.accommodation.plannedHotelArrivalTime",
+            "Planned hotel arrival time (optional)",
+            "time",
+            5,
+          )}
+        </div>
+        <div className="field-row">
+          {field(
+            "travel.accommodation.plannedHotelDepartureDate",
+            "Planned hotel departure date (optional)",
+            "date",
+            10,
+          )}
+          {field(
+            "travel.accommodation.plannedHotelDepartureTime",
+            "Planned hotel departure time (optional)",
             "time",
             5,
           )}
         </div>
       </fieldset>
       <p className="field-hint">
-        Enter planned check-in/out times, not hotel policy hours. Times are
-        destination-local; allow 30 minutes for each. Locations, luggage storage
-        and transfers are not verified.
+        Policy times describe when check-in opens and when checkout is due, not
+        fixed appointments. Planned movements are optional and
+        destination-local; they reserve an estimated 30-minute logistics buffer.
+        Locations, luggage storage and transfers are not verified.
       </p>
     </details>
   );

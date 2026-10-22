@@ -6,7 +6,7 @@ import type {
 } from "@/features/trips/chat-contract";
 import type { TripInput } from "@/features/trips/types";
 
-export const DATASET_VERSION = "travel-reliability-v5";
+export const DATASET_VERSION = "travel-reliability-v6";
 export const LEGACY_DATASET_VERSION = "travel-reliability-v3";
 export const FIXTURE_VERSION = "synthetic-kyoto-v1";
 const uuid = (n: number) =>
@@ -810,8 +810,116 @@ export const integrationEvaluationCases: EditCase[] =
       "Short confirmations and draft refinements never act as acceptance",
     ],
   }));
+export const stabilizationEvaluationCases: EvalCase[] = [
+  {
+    id: "stabilization-osaka-delegated",
+    message:
+      "Can you replace one of my activities on April 17 with a visit to Osaka Castle? Keep the schedule realistic.",
+    edit: true,
+  },
+  {
+    id: "stabilization-osaka-redundant",
+    message:
+      "Replace one activity on April 17 with Osaka Castle, even though it is on April 16 too.",
+    edit: true,
+  },
+  { id: "stabilization-ambiguous-yes", message: "Yes", ambiguous: true },
+  {
+    id: "stabilization-day-cost",
+    message: "How much are we spending on Day 2 in total for both travelers?",
+    calculation: "day_cost",
+  },
+  {
+    id: "stabilization-per-person",
+    message: "What does Day 2 cost per person?",
+    calculation: "per_person_cost",
+  },
+  {
+    id: "stabilization-budget-remaining",
+    message: "How much whole-party budget remains?",
+    calculation: "budget_remaining",
+  },
+  {
+    id: "stabilization-over-budget",
+    message: "Are we over budget?",
+    calculation: "budget_status",
+  },
+  {
+    id: "stabilization-expensive-day",
+    message: "Which day is the most expensive?",
+    calculation: "most_expensive_day",
+  },
+  {
+    id: "stabilization-policy-question",
+    message: "Does check-in available from 15:00 mean I must arrive at 15:00?",
+  },
+  {
+    id: "stabilization-cost-scope",
+    message: "Are these costs for one person or both travelers?",
+    calculation: "cost_scope",
+  },
+].map((item) => {
+  const request = fixtureRequest(item.message);
+  request.itinerary.input.travelers = 2;
+  if (item.edit) {
+    request.itinerary.input = {
+      ...request.itinerary.input,
+      destination: "Osaka, Japan",
+      startDate: "2027-04-15",
+      endDate: "2027-04-17",
+    };
+    request.itinerary.days.forEach(
+      (day, index) => (day.date = `2027-04-${15 + index}`),
+    );
+    request.itinerary.days[1].activities[0].name = "Osaka Castle visit";
+  }
+  if (item.ambiguous)
+    request.context = [
+      { role: "user", content: "Can we improve the evening?" },
+      {
+        role: "assistant",
+        content:
+          "Would you like to keep the current visit, or replace it with shopping?",
+        outcome: "clarification",
+      },
+    ];
+  const calculation = item.calculation
+    ? {
+        type: item.calculation as TravelQuestion["type"],
+        dayNumber: ["day_cost", "per_person_cost"].includes(item.calculation)
+          ? 2
+          : null,
+        amount: null,
+        currency: null,
+      }
+    : undefined;
+  return {
+    id: item.id,
+    category: "stabilization",
+    task: "chat",
+    request,
+    expected: {
+      intents: item.edit
+        ? ["itinerary_edit"]
+        : item.ambiguous
+          ? ["clarification_needed"]
+          : ["travel_question"],
+      changes: item.edit ? "proposal" : "none",
+      ...(item.edit ? { targetDay: 3 } : {}),
+      ...(calculation ? { calculation } : {}),
+    },
+    evidence: [],
+    humanReview: [
+      "Delegated choices prepare concrete operations without asking permission to draft",
+      "Ambiguous confirmations clarify without authorizing changes",
+      "Hotel policy is not a scheduled physical appointment",
+      "Cost narration agrees with server-derived whole-party figures",
+    ],
+  };
+});
 export const evaluationCases: EvalCase[] = [
   ...legacyEvaluationCases,
   ...conversationEvaluationCases,
   ...integrationEvaluationCases,
+  ...stabilizationEvaluationCases,
 ];

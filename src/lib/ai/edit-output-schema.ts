@@ -59,9 +59,80 @@ export const conversationOutputSchema = z.strictObject({
 });
 export type ConversationOutput = z.infer<typeof conversationOutputSchema>;
 
+// Required action decision, within a root object (not a top-level anyOf).
+// A proposal cannot omit operations; clarification must name genuinely missing data.
+export const conversationActionSchema = z.union([
+  z.strictObject({
+    type: z.literal("proposal"),
+    operations: z.array(wireOperation).min(1).max(MAX_EDIT_OPERATIONS),
+  }),
+  z.strictObject({
+    type: z.literal("clarification"),
+    missing: z.enum([
+      "day",
+      "activity",
+      "replacement",
+      "schedule",
+      "ambiguous_confirmation",
+    ]),
+    question: z.string().min(1).max(400),
+  }),
+  z.strictObject({
+    type: z.literal("unsupported"),
+    limitation: z.string().min(1).max(400),
+  }),
+  z.strictObject({
+    type: z.literal("none"),
+    reason: z.enum(["informational", "preference", "no_change", "boundary"]),
+  }),
+]);
+export const providerConversationSchema = conversationOutputSchema
+  .omit({ proposal: true })
+  .extend({ action: conversationActionSchema });
+export type ProviderConversation = z.infer<typeof providerConversationSchema>;
+const providerEnvelopeSchema = providerConversationSchema.extend({
+  action: z.unknown(),
+  calculation: z.unknown(),
+});
+
+// Stored messages/proposals keep their existing wire contract; old mocked evals
+// are still readable. Invalid new contracts never fall back to legacy parsing.
+export function adaptConversationOutput(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || !("action" in raw)) return raw;
+  const parsed = providerEnvelopeSchema.safeParse(raw);
+  if (!parsed.success || !Object.hasOwn(raw, "calculation")) return null;
+  const { action: rawAction, ...rest } = parsed.data;
+  const checked = conversationActionSchema.safeParse(rawAction);
+  // The existing normalizer validates proposal/calculation components separately.
+  // An invalid action never authorizes an edit, but must not erase valid arithmetic.
+  if (!checked.success) return { ...rest, proposal: { invalidAction: true } };
+  const action = checked.data;
+  if (action.type === "clarification")
+    return {
+      ...rest,
+      presentation: "clarification",
+      message: action.question,
+      proposal: null,
+    };
+  if (action.type === "unsupported")
+    return {
+      ...rest,
+      presentation: "response",
+      message: action.limitation,
+      proposal: null,
+    };
+  return {
+    ...rest,
+    proposal:
+      action.type === "proposal" ? { operations: action.operations } : null,
+  };
+}
+
 // Derived display/diagnostic labels are not model intent gates.
 export function observationForLegacyMetrics(raw: unknown): unknown {
-  const parsed = conversationOutputSchema.safeParse(raw);
+  const parsed = conversationOutputSchema.safeParse(
+    adaptConversationOutput(raw),
+  );
   if (!parsed.success) return raw;
   const value = parsed.data;
   const kind = value.proposal

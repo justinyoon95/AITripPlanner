@@ -25,7 +25,7 @@ import type { AIObservation } from "@/lib/ai/telemetry";
 import {
   aiChatOutputSchema,
   aiEditOutputSchema,
-  conversationOutputSchema,
+  providerConversationSchema,
   observationForLegacyMetrics,
 } from "@/lib/ai/edit-output-schema";
 import { aiOutputSchemaForTrip } from "@/lib/ai/output-schema";
@@ -158,7 +158,7 @@ it("runs explicitly authorized real-model evaluations, never ordinary tests", as
           fixture.task === "chat"
             ? variant === "baseline"
               ? aiEditOutputSchema
-              : conversationOutputSchema
+              : providerConversationSchema
             : aiOutputSchemaForTrip(fixture.input);
         // Byte-based reservation deliberately overestimates input; not a billing guarantee.
         const inputAllowance =

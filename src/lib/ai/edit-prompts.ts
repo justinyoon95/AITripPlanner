@@ -2,7 +2,7 @@ import type { EditRequest } from "@/features/trips/edit-schema";
 import { plannedDays } from "@/features/trips/travel-planning";
 
 export { conversationInstructions as editInstructions } from "./conversation-prompts";
-export const CHAT_PROMPT_VERSION = "chat-3.6-v1";
+export const CHAT_PROMPT_VERSION = "chat-3.8-v1";
 export const legacyEditInstructions = `You are a specialized travel assistant. Classify the latest request in context, using exactly one intent:
 itinerary_edit: an explicit request to change planned activities; kind proposal, 1-6 operations, question null.
 Natural requests such as "I want Day 1 to be relaxing", "fewer events on Day 1" and "make Day 1 more relaxing" are edit requests. Propose a removal for a less busy day if it still retains at least one activity; do not ask users to name an internal operation type.
@@ -35,6 +35,19 @@ export function editInput(request: EditRequest) {
       days: request.itinerary.days,
     },
     scope: request.scope,
+    editCapabilities: {
+      targetSelectionMayBeDelegated: true,
+      preparingProposalRequiresNoAdditionalPermission: true,
+      onlyReviewControlsCanAccept: true,
+      maxOperations: 6,
+      clarificationReasons: [
+        "day",
+        "activity",
+        "replacement",
+        "schedule",
+        "ambiguous_confirmation",
+      ],
+    },
     planningWindows: plannedDays(request.itinerary.input),
     activeVersionId: request.baseVersionId,
     pendingProposal: request.pendingProposal ?? null,

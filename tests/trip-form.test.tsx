@@ -163,3 +163,37 @@ it("does not generate a trip when typed geography cannot be resolved", async () 
   expect(generate).not.toHaveBeenCalled();
   expect(store).not.toHaveBeenCalled();
 });
+it("clears a server hotel movement error when the optional movement is removed", async () => {
+  generate.mockRejectedValueOnce(
+    Object.assign(new Error("Please check the highlighted trip details."), {
+      fieldErrors: {
+        "travel.accommodation.plannedHotelArrivalTime": [
+          "Planned hotel arrival must allow the estimated arrival procedures and transfer buffer.",
+        ],
+      },
+    }),
+  );
+  await fill();
+  await userEvent.click(screen.getByText("Travel details"));
+  const date = screen.getByLabelText("Planned hotel arrival date (optional)");
+  const time = screen.getByLabelText("Planned hotel arrival time (optional)");
+  fireEvent.change(date, { target: { value: input.startDate } });
+  fireEvent.change(time, { target: { value: "19:00" } });
+  await userEvent.click(
+    screen.getByRole("button", { name: "Preview my itinerary" }),
+  );
+  await screen.findByText(
+    "Planned hotel arrival must allow the estimated arrival procedures and transfer buffer.",
+  );
+  fireEvent.change(date, { target: { value: "" } });
+  fireEvent.change(time, { target: { value: "" } });
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Preview my itinerary" }),
+    ).toBeEnabled(),
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: "Preview my itinerary" }),
+  );
+  await waitFor(() => expect(push).toHaveBeenCalled());
+});

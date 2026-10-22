@@ -67,23 +67,48 @@ export function travelWindow(input: PlanningInput, date: string): TravelWindow {
   const hotel = input.travel?.accommodation;
   if (hotel && date === hotel.checkInDate) {
     notes.push(
-      `Check-in${hotel.checkInTime ? ` at ${hotel.checkInTime}` : " time unknown"}. Do not assume early access or luggage storage.`,
+      `Hotel check-in available${hotel.checkInAvailableFrom ? ` from ${hotel.checkInAvailableFrom}` : " at an unknown time"}; this is policy, not a planned arrival. Do not assume early access or luggage storage.`,
     );
-    if (hotel.checkInTime)
-      appointments.push({
-        start: minutes(hotel.checkInTime),
-        end: Math.min(1440, minutes(hotel.checkInTime) + 30),
-      });
   }
   if (hotel && date === hotel.checkOutDate) {
     notes.push(
-      `Check-out${hotel.checkOutTime ? ` at ${hotel.checkOutTime}` : " time unknown"}. Plan luggage arrangements; storage is not confirmed.`,
+      `Hotel checkout${hotel.checkOutBy ? ` required by ${hotel.checkOutBy}` : " deadline unknown"}; leaving earlier is allowed. Storage is not confirmed.`,
     );
-    if (hotel.checkOutTime)
-      appointments.push({
-        start: Math.max(0, minutes(hotel.checkOutTime) - 30),
-        end: minutes(hotel.checkOutTime),
-      });
+  }
+  if (hotel?.checkInTime || hotel?.checkOutTime)
+    notes.push(
+      "Legacy hotel time fields have unconfirmed meaning and are not scheduled movements. Confirm policy and actual movements before relying on them.",
+    );
+  for (const [movementDate, time, before, label] of [
+    [
+      hotel?.plannedHotelArrivalDate,
+      hotel?.plannedHotelArrivalTime,
+      false,
+      "arrival",
+    ],
+    [
+      hotel?.plannedHotelDepartureDate,
+      hotel?.plannedHotelDepartureTime,
+      true,
+      "departure",
+    ],
+  ] as const) {
+    if (!movementDate || !time) continue;
+    const movement = Date.parse(`${movementDate}T${time}:00Z`);
+    const dayStart = Date.parse(`${date}T00:00:00Z`);
+    // Calendar arithmetic on destination-local wall times, not UTC flight instants.
+    const from = movement - (before ? 30 : 0) * 60_000;
+    const to = movement + (before ? 0 : 30) * 60_000;
+    const slot = {
+      start: Math.max(0, (from - dayStart) / 60_000),
+      end: Math.min(1440, (to - dayStart) / 60_000),
+    };
+    if (slot.start < slot.end) {
+      appointments.push(slot);
+      notes.push(
+        `User-planned hotel ${label} ${movementDate} ${time} (destination local time); reserve an estimated 30-minute logistics buffer, not a verified hotel procedure.`,
+      );
+    }
   }
   // Boundary travel days with under an hour available stay logistics-only.
   const constrained =
